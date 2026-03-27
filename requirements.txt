@@ -1,0 +1,23 @@
+# UI
+PyQt6==6.10.2
+PyQt6-WebEngine==6.10.0
+
+# Data processing
+pandas==2.3.3
+numpy==2.0.2
+
+# Visualization
+matplotlib==3.9.4
+plotly==6.5.2
+dash==4.0.0
+
+# Machine learning & statistics
+scikit-learn==1.6.1
+scipy==1.13.1
+
+# Excel export
+xlsxwriter==3.2.9
+openpyxl==3.1.5
+
+# PowerPoint export
+python-pptx==1.0.2

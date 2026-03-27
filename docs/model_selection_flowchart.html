@@ -1,0 +1,125 @@
+<div style="padding: 1rem 0;">
+<style>
+.fl-step { display: flex; gap: 12px; margin-bottom: 0; }
+.fl-line { display: flex; flex-direction: column; align-items: center; width: 24px; flex-shrink: 0; }
+.fl-dot { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; border: 2px solid var(--color-border-secondary); background: var(--color-background-primary); }
+.fl-dot.decision { background: var(--color-background-info); border-color: var(--color-border-info); }
+.fl-connector { width: 1px; flex: 1; min-height: 12px; background: var(--color-border-tertiary); }
+.fl-content { flex: 1; padding-bottom: 16px; }
+.fl-question { font-size: 14px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 6px; }
+.fl-paths { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 8px; }
+.fl-path { background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 8px 12px; font-size: 12px; }
+.fl-answer { font-weight: 500; color: var(--color-text-primary); margin-bottom: 2px; }
+.fl-result { color: var(--color-text-secondary); line-height: 1.5; }
+.fl-hl { font-weight: 500; color: var(--color-text-primary); }
+.fl-paths-3 { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 8px; }
+.our-path { border: 1.5px solid var(--color-border-info); background: var(--color-background-info); }
+.our-path .fl-answer { color: var(--color-text-info); }
+.our-path .fl-result { color: var(--color-text-info); }
+.final-card { background: var(--color-background-secondary); border-radius: var(--border-radius-lg); padding: 1.25rem; margin-top: 1rem; }
+.final-title { font-size: 14px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 10px; }
+.final-body { font-size: 13px; color: var(--color-text-secondary); line-height: 1.7; }
+</style>
+
+<div class="fl-step">
+<div class="fl-line"><div class="fl-dot decision"></div><div class="fl-connector"></div></div>
+<div class="fl-content">
+<div class="fl-question">How many samples?</div>
+<div class="fl-paths-3">
+<div class="fl-path our-path"><div class="fl-answer">Under 200</div><div class="fl-result">Start simple: Ridge, Lasso, or conservative CatBoost</div></div>
+<div class="fl-path"><div class="fl-answer">200–10,000</div><div class="fl-result">Gradient boosting (CatBoost, XGBoost, LightGBM) is usually best</div></div>
+<div class="fl-path"><div class="fl-answer">10,000+</div><div class="fl-result">Deep learning becomes viable; gradient boosting still competitive</div></div>
+</div>
+</div>
+</div>
+
+<div class="fl-step">
+<div class="fl-line"><div class="fl-dot decision"></div><div class="fl-connector"></div></div>
+<div class="fl-content">
+<div class="fl-question">Mostly categories or numbers?</div>
+<div class="fl-paths-3">
+<div class="fl-path our-path"><div class="fl-answer">Mostly categories</div><div class="fl-result">CatBoost (native), LightGBM, or tree-based models. Avoid plain Ridge.</div></div>
+<div class="fl-path"><div class="fl-answer">Mostly numbers</div><div class="fl-result">Ridge, Lasso, SVR, neural networks all work naturally</div></div>
+<div class="fl-path"><div class="fl-answer">Mixed</div><div class="fl-result">Gradient boosting handles both well</div></div>
+</div>
+</div>
+</div>
+
+<div class="fl-step">
+<div class="fl-line"><div class="fl-dot decision"></div><div class="fl-connector"></div></div>
+<div class="fl-content">
+<div class="fl-question">Linear or non-linear relationships?</div>
+<div class="fl-paths-3">
+<div class="fl-path"><div class="fl-answer">Linear</div><div class="fl-result">Ridge or Lasso. Simple, fast, exact solution.</div></div>
+<div class="fl-path our-path"><div class="fl-answer">Unknown or non-linear</div><div class="fl-result">Trees (they handle both). Use residuals from Ridge to check.</div></div>
+<div class="fl-path"><div class="fl-answer">Complex patterns</div><div class="fl-result">Gradient boosting or neural networks</div></div>
+</div>
+</div>
+</div>
+
+<div class="fl-step">
+<div class="fl-line"><div class="fl-dot decision"></div><div class="fl-connector"></div></div>
+<div class="fl-content">
+<div class="fl-question">Do interactions matter?</div>
+<div class="fl-paths">
+<div class="fl-path our-path"><div class="fl-answer">Yes or maybe</div><div class="fl-result">Tree-based models find these automatically. Ridge can't without manual feature engineering.</div></div>
+<div class="fl-path"><div class="fl-answer">No</div><div class="fl-result">Ridge/Lasso work great — simpler is better when interactions aren't present</div></div>
+</div>
+</div>
+</div>
+
+<div class="fl-step">
+<div class="fl-line"><div class="fl-dot decision"></div><div class="fl-connector"></div></div>
+<div class="fl-content">
+<div class="fl-question">Features > samples?</div>
+<div class="fl-paths">
+<div class="fl-path"><div class="fl-answer">Yes (wide data)</div><div class="fl-result">Lasso or ElasticNet — they zero out irrelevant features. Or PCA to reduce dimensions first.</div></div>
+<div class="fl-path our-path"><div class="fl-answer">No (tall data)</div><div class="fl-result">No special handling needed. Most models work.</div></div>
+</div>
+</div>
+</div>
+
+<div class="fl-step">
+<div class="fl-line"><div class="fl-dot decision"></div><div class="fl-connector"></div></div>
+<div class="fl-content">
+<div class="fl-question">Missing data?</div>
+<div class="fl-paths">
+<div class="fl-path"><div class="fl-answer">Yes</div><div class="fl-result">CatBoost, XGBoost, LightGBM handle it natively. Ridge/Lasso need you to fill in gaps first.</div></div>
+<div class="fl-path our-path"><div class="fl-answer">No</div><div class="fl-result">Any model works</div></div>
+</div>
+</div>
+</div>
+
+<div class="fl-step">
+<div class="fl-line"><div class="fl-dot decision"></div><div class="fl-connector"></div></div>
+<div class="fl-content">
+<div class="fl-question">Outliers present?</div>
+<div class="fl-paths">
+<div class="fl-path"><div class="fl-answer">Yes</div><div class="fl-result">Tree-based models are robust. Ridge/Lasso get dragged by outliers — use Huber loss or remove outliers first.</div></div>
+<div class="fl-path our-path"><div class="fl-answer">No or removed</div><div class="fl-result">Any model works</div></div>
+</div>
+</div>
+</div>
+
+<div class="fl-step">
+<div class="fl-line"><div class="fl-dot decision"></div><div class="fl-connector" style="min-height:0;"></div></div>
+<div class="fl-content">
+<div class="fl-question">Need to explain predictions?</div>
+<div class="fl-paths-3">
+<div class="fl-path our-path"><div class="fl-answer">Yes, to non-technical</div><div class="fl-result">Ridge (clear coefficients) or shallow tree (visual rules)</div></div>
+<div class="fl-path"><div class="fl-answer">Somewhat</div><div class="fl-result">CatBoost + SHAP values (shows each feature's push/pull per prediction)</div></div>
+<div class="fl-path"><div class="fl-answer">Not needed</div><div class="fl-result">Neural networks, deep ensembles — optimize for accuracy only</div></div>
+</div>
+</div>
+</div>
+
+<div class="final-card">
+<div class="final-title">Our CMP project traced through this flowchart</div>
+<div class="final-body">
+76 samples (small) + mostly categorical + interactions likely + need interpretability → <span class="fl-hl">CatBoost with conservative settings as primary, Ridge as interpretable baseline.</span>
+<br><br>
+This is why we landed on the recommendation we did. A different dataset — say 50,000 rows of all-numerical sensor data with no missing values — would trace a completely different path and land on a completely different model. The data decides.
+</div>
+</div>
+
+</div>

@@ -1,0 +1,10 @@
+.venv
+.vscode
+.claude
+__pycache__
+.DS_Store
+build/
+dist/
+*.spec
+*.ico
+release/
