@@ -801,6 +801,139 @@ INDEX_STRING = '''
                 flex-wrap: wrap;
                 gap: 8px;
             }
+
+            /* ── AI Agent Chat ─────────────────────────────────────────── */
+            .agent-status-bar {
+                display: flex;
+                gap: 12px;
+                align-items: center;
+                padding: 8px 16px;
+                background: #2a2a2a;
+                border-bottom: 1px solid #404040;
+                font-size: 12px;
+            }
+            .agent-status-badge {
+                padding: 3px 10px;
+                border-radius: 12px;
+                background: #353535;
+                color: #888888;
+                font-size: 11px;
+            }
+            .agent-status-badge.active {
+                background: #1a3a1a;
+                color: #22c55e;
+            }
+            .agent-chat-area {
+                flex: 1;
+                overflow-y: auto;
+                padding: 16px;
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+            }
+            .agent-message {
+                max-width: 85%;
+                padding: 10px 14px;
+                border-radius: 12px;
+                font-size: 13px;
+                line-height: 1.5;
+                word-wrap: break-word;
+            }
+            .agent-message.assistant {
+                align-self: flex-start;
+                background: #353535;
+                color: #e0e0e0;
+                border-bottom-left-radius: 4px;
+            }
+            .agent-message.user {
+                align-self: flex-end;
+                background: #1e3a5f;
+                color: #e0e0e0;
+                border-bottom-right-radius: 4px;
+            }
+            .agent-message.system {
+                align-self: center;
+                background: transparent;
+                color: #888888;
+                font-style: italic;
+                text-align: center;
+                font-size: 12px;
+            }
+            .agent-thinking {
+                font-size: 11px;
+                color: #666666;
+                padding: 4px 10px;
+                border-left: 2px solid #404040;
+                margin: 4px 0;
+                cursor: pointer;
+            }
+            .agent-thinking summary {
+                color: #888888;
+            }
+            .agent-input-area {
+                display: flex;
+                gap: 8px;
+                padding: 12px 16px;
+                background: #2a2a2a;
+                border-top: 1px solid #404040;
+            }
+            .agent-input-area input {
+                flex: 1;
+                background: #353535;
+                border: 1px solid #404040;
+                border-radius: 8px;
+                color: #e0e0e0;
+                padding: 10px 14px;
+                font-size: 13px;
+                outline: none;
+            }
+            .agent-input-area input:focus {
+                border-color: #3b82f6;
+            }
+            .agent-send-btn {
+                background: #3b82f6;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                padding: 10px 20px;
+                font-size: 13px;
+                font-weight: 600;
+                cursor: pointer;
+            }
+            .agent-send-btn:hover {
+                background: #2563eb;
+            }
+            .agent-send-btn:disabled {
+                background: #404040;
+                color: #666666;
+                cursor: not-allowed;
+            }
+            .agent-suggestions {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+                justify-content: center;
+                padding: 8px 16px;
+            }
+            .agent-suggestion-chip {
+                background: #353535;
+                border: 1px solid #404040;
+                border-radius: 16px;
+                color: #888888;
+                padding: 6px 14px;
+                font-size: 12px;
+                cursor: pointer;
+            }
+            .agent-suggestion-chip:hover {
+                border-color: #3b82f6;
+                color: #e0e0e0;
+            }
+            .agent-chart-container {
+                width: 100%;
+                margin: 8px 0;
+                border-radius: 8px;
+                overflow: hidden;
+            }
         </style>
     </head>
     <body>

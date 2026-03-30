@@ -447,127 +447,58 @@ def build_correlations_tab():
     ])
 
 
-def build_prediction_tab():
-    """Build the 'Predict Removal' tab layout."""
-    return dcc.Tab(label='Predict Removal', value='prediction', className='tab', selected_className='tab--selected', children=[
-        html.Div([
-            # Control Panel — model selection + train button
-            html.Div(className='control-panel', children=[
-                html.Div(className='control-panel-row', children=[
-                    html.Div(className='control-group', children=[
-                        html.Label("Model", className='control-label'),
-                        dcc.RadioItems(
-                            id='pred-model-select',
-                            options=[
-                                {'label': ' Ridge Regression', 'value': 'ridge'},
-                                {'label': ' Random Forest', 'value': 'rf'},
-                            ],
-                            value='ridge',
-                            inline=True,
-                            className='checklist-container',
-                            inputStyle={'marginRight': '4px'},
-                            labelStyle={'marginRight': '24px', 'fontSize': '13px',
-                                        'color': '#888888', 'cursor': 'pointer'},
-                        ),
-                    ]),
-                    html.Div(style={'display': 'flex', 'alignItems': 'flex-end'}, children=[
-                        html.Button("Train Model", id='pred-train-btn', n_clicks=0,
-                                    className='pred-btn'),
-                    ]),
-                ]),
+def build_agent_tab():
+    """Build the 'AI Agent' tab layout with chat interface."""
+    return dcc.Tab(label='AI Agent', value='agent', className='tab', selected_className='tab--selected', children=[
+        html.Div(style={
+            'display': 'flex', 'flexDirection': 'column',
+            'height': 'calc(100vh - 120px)', 'padding': '0',
+        }, children=[
 
-                # Metric badges
-                html.Div(className='pred-metrics', style={'marginTop': '12px'}, children=[
-                    html.Span(id='pred-n-files', className='variance-badge',
-                              children='0 files'),
-                    html.Span(id='pred-r2', className='variance-badge',
-                              title='How well the model explains variation in Removal. 1.0 = perfect, 0.0 = no better than guessing the average.\nR\u00b2 = 1 \u2212 \u03a3(y\u1d62 \u2212 \u0177\u1d62)\u00b2 / \u03a3(y\u1d62 \u2212 \u0233)\u00b2',
-                              children='R\u00b2 = --'),
-                    html.Span(id='pred-rmse', className='variance-badge',
-                              title='Root Mean Squared Error \u2014 average prediction error in Angstroms. Penalizes large misses more heavily. Lower is better.\nRMSE = \u221a(\u03a3(y\u1d62 \u2212 \u0177\u1d62)\u00b2 / n)',
-                              children='RMSE = --'),
-                    html.Span(id='pred-mae', className='variance-badge',
-                              title='Mean Absolute Error \u2014 average prediction error in Angstroms. Lower is better.\nMAE = \u03a3|y\u1d62 \u2212 \u0177\u1d62| / n',
-                              children='MAE = --'),
-                ]),
-                html.Div(id='pred-warning', style={'display': 'none'}),
+            # Status bar
+            html.Div(className='agent-status-bar', children=[
+                html.Span(id='agent-model-badge', className='agent-status-badge',
+                           children='No model'),
+                html.Span(id='agent-data-badge', className='agent-status-badge',
+                           children='0 files'),
+                html.Span(id='agent-ollama-badge', className='agent-status-badge',
+                           children='Connecting...'),
             ]),
 
-            # Prediction Input Card (hidden until model is trained)
-            html.Div(id='pred-input-container', className='graph-card', style={'display': 'none'}, children=[
-                html.Div(className='card-header', children=[
-                    html.H4("Predict New Configuration", className='card-title'),
-                    html.P("Select materials and process parameters to predict removal",
-                           className='card-subtitle'),
-                ]),
-                html.Div(className='control-toolbar', children=[
-                    html.Div(className='inline-control', children=[
-                        html.Label("Wafer", className='inline-label'),
-                        dcc.Dropdown(id='pred-wafer', placeholder="Select...",
-                                     clearable=False, style={'width': '160px'}),
-                    ]),
-                    html.Div(className='inline-control', children=[
-                        html.Label("Pad", className='inline-label'),
-                        dcc.Dropdown(id='pred-pad', placeholder="Select...",
-                                     clearable=False, style={'width': '160px'}),
-                    ]),
-                    html.Div(className='inline-control', children=[
-                        html.Label("Slurry", className='inline-label'),
-                        dcc.Dropdown(id='pred-slurry', placeholder="Select...",
-                                     clearable=False, style={'width': '160px'}),
-                    ]),
-                    html.Div(className='inline-control', children=[
-                        html.Label("Conditioner", className='inline-label'),
-                        dcc.Dropdown(id='pred-conditioner', placeholder="Select...",
-                                     clearable=False, style={'width': '160px'}),
-                    ]),
-                ]),
-                html.Div(className='control-toolbar', children=[
-                    html.Div(className='inline-control', children=[
-                        html.Label("Pressure (PSI)", className='inline-label'),
-                        dcc.Input(id='pred-pressure', type='number', placeholder='e.g. 4',
-                                  style={**INPUT_STYLE, 'width': '100px'}),
-                    ]),
-                    html.Div(className='inline-control', children=[
-                        html.Label("Polish Time (min)", className='inline-label'),
-                        dcc.Input(id='pred-polish-time', type='number',
-                                  placeholder='e.g. 1',
-                                  style={**INPUT_STYLE, 'width': '100px'}),
-                    ]),
-                    html.Div(style={'display': 'flex', 'alignItems': 'flex-end'}, children=[
-                        html.Button("Predict", id='pred-predict-btn', n_clicks=0,
-                                    className='pred-btn'),
-                    ]),
-                ]),
+            # Chat message area
+            html.Div(id='agent-chat-area', className='agent-chat-area', children=[]),
 
-                # Prediction result
-                html.Div(id='pred-result', className='pred-result-box',
-                         children=html.P("Train a model, then enter a configuration above.",
-                                         style={'color': '#707070', 'fontSize': '13px'})),
+            # Suggested prompts (shown when chat is empty)
+            html.Div(id='agent-suggestions', className='agent-suggestions', children=[
+                html.Button("Build a prediction model", id='agent-suggest-0',
+                            className='agent-suggestion-chip', n_clicks=0),
+                html.Button("Summarize my dataset", id='agent-suggest-1',
+                            className='agent-suggestion-chip', n_clicks=0),
+                html.Button("Which files are outliers?", id='agent-suggest-2',
+                            className='agent-suggestion-chip', n_clicks=0),
+                html.Button("Predict removal for new conditions", id='agent-suggest-3',
+                            className='agent-suggestion-chip', n_clicks=0),
             ]),
 
-            # Diagnostics 2x2 Grid (hidden until model is trained)
-            html.Div(id='pred-diagnostics-container', className='prediction-grid', style={'display': 'none'}, children=[
-                html.Div(className='graph-card', children=[
-                    dcc.Graph(id='pred-vs-actual', config=_graph_config('pred-vs-actual'),
-                              style={'height': '380px', 'width': '100%'}),
-                ]),
-                html.Div(className='graph-card', children=[
-                    dcc.Graph(id='pred-importance', config=_graph_config('pred-importance'),
-                              style={'height': '380px', 'width': '100%'}),
-                ]),
-                html.Div(className='graph-card', children=[
-                    dcc.Graph(id='pred-residual', config=_graph_config('pred-residual'),
-                              style={'height': '380px', 'width': '100%'}),
-                ]),
-                html.Div(className='graph-card', children=[
-                    dcc.Graph(id='pred-residual-hist',
-                              config=_graph_config('pred-residual-hist'),
-                              style={'height': '380px', 'width': '100%'}),
-                ]),
+            # Input area
+            html.Div(className='agent-input-area', children=[
+                dcc.Input(
+                    id='agent-input',
+                    type='text',
+                    placeholder='Ask about your polishing data...',
+                    debounce=False,
+                    n_submit=0,
+                ),
+                html.Button("Send", id='agent-send-btn',
+                            className='agent-send-btn', n_clicks=0),
             ]),
 
-        ], style={'padding': '0'})
+            # Hidden stores for agent state
+            dcc.Store(id='agent-messages-store', data=[]),
+            dcc.Store(id='agent-pending-message', data=None),
+            dcc.Store(id='agent-processing', data=False),
+            dcc.Interval(id='agent-poll-interval', interval=200, disabled=True),
+        ])
     ])
 
 
@@ -578,9 +509,8 @@ def build_app_layout():
             build_single_file_tab(),
             build_multi_file_tab(),
             build_correlations_tab(),
-            build_prediction_tab(),
+            build_agent_tab(),
         ]),
-        dcc.Store(id='pred-model-store'),
         dcc.Store(id='ts-dblclick-trigger', data=0),
         dcc.Store(id='sf-dblclick-trigger', data=0),
         html.Div(id='ts-graph-listener', style={'display': 'none'}),

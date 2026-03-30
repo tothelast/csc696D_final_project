@@ -19,12 +19,19 @@ from dashboard.callbacks import register_callbacks
 
 data_manager = DataManager()
 
+# Create agent engine (Ollama must be started separately before use)
+try:
+    from ai.agent import AgentEngine
+    agent_engine = AgentEngine(data_manager)
+except ImportError:
+    agent_engine = None
+
 app = dash.Dash(__name__, external_stylesheets=[])
 server = app.server
 
 app.index_string = INDEX_STRING
 app.layout = build_app_layout()
-register_callbacks(app, data_manager)
+register_callbacks(app, data_manager, agent_engine)
 
 if __name__ == '__main__':
     app.run(debug=True)

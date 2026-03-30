@@ -16,6 +16,7 @@ from desktop.workers import FileLoadWorker, FileImportWorker, ReportGenerationWo
 from desktop.theme import ToastNotification
 from dashboard.dash_bridge import DataManager
 from core.report import Report
+from ai.ollama_manager import OllamaManager
 
 
 class MainWindow(QMainWindow):
@@ -35,6 +36,7 @@ class MainWindow(QMainWindow):
         self.project_dir = None
         self.report = Report()
         self.ui_state = {}
+        self.ollama_manager = OllamaManager()
 
         # Worker references (prevent GC)
         self._load_worker = None
@@ -268,6 +270,22 @@ class MainWindow(QMainWindow):
         data_manager = DataManager()
         data_manager.update_report(self.report)
 
+        # Start Ollama if not already running
+        if not self.ollama_manager.is_healthy():
+            self.ollama_manager.start()
+
+        # Update agent engine with the resolved Ollama port
+        try:
+            from dashboard.app import agent_engine
+            if agent_engine is not None:
+                import ollama as _ollama
+                agent_engine.port = self.ollama_manager.port
+                agent_engine.client = _ollama.Client(
+                    host=f"http://localhost:{self.ollama_manager.port}"
+                )
+        except ImportError:
+            pass
+
         # Pass project directory for PNG saving
         self.analysis_page.set_project_dir(self.project_dir)
 
@@ -283,6 +301,8 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event):
         """Save project on close."""
+        # Stop Ollama process
+        self.ollama_manager.stop()
         if self.project_dir and self.report.files:
             reply = QMessageBox.question(
                 self, "Save Project",

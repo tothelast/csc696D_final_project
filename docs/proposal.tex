@@ -1,0 +1,112 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{times}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue,
+  citecolor=blue,
+  urlcolor=blue
+}
+
+\title{\textbf{LLM Agent-Augmented Visual Analytics for\\Semiconductor Wafer Polishing Data}\\[0.5em]
+\large CSC 696D Visual Analytics --- Project Proposal}
+
+\author{Garegin Mazmanyan, Taoseef Aziz\\
+University of Arizona, Tucson}
+
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section{Project Title}
+
+LLM Agent-Augmented Visual Analytics for Semiconductor Wafer Polishing Data
+
+\section{Problem Description and Motivation}
+
+Chemical Mechanical Planarization (CMP) is critical to semiconductor manufacturing. During polishing, sensors capture force, temperature, and pressure data at $\sim$1000\,Hz. Engineers must analyze this data to predict material removal rates and optimize process parameters.
+
+The challenge: \textbf{process engineers are domain experts, not data scientists.} Current visual analytics tools for CMP data either present raw charts without predictive guidance, or require manual selection and configuration of ML models. Engineers must choose between Ridge Regression and Random Forest, tune hyperparameters, and interpret diagnostic plots---tasks outside their expertise.
+
+We propose extending framework, an existing PyQt6/Dash analytics application, with an AI agent that:
+\begin{itemize}[noitemsep]
+  \item Automatically selects the best ML model using AutoML (eliminating manual model choice)
+  \item Provides a natural language chat interface for asking questions about the data
+  \item Generates ad-hoc visualizations on demand through conversation
+  \item Runs entirely offline via a local LLM---critical for air-gapped fab environments
+\end{itemize}
+
+This project fits the \textit{LLM agent-involved visual analytics} and \textit{Explainable AI} directions listed in the course project description.
+
+\section{Related Research}
+
+\begin{itemize}[noitemsep]
+  \item Zhao et al.\ \cite{lightva2024} introduce \textbf{LightVA}, an LLM agent-based VA framework with recursive task planning and execution---the closest precedent to our approach.
+  \item The same group's \textbf{LEVA} \cite{leva2024} augments existing VA systems with LLM-powered onboarding, insight recommendation, and summarization.
+  \item Kim et al.\ \cite{phenoflow2024} demonstrate \textbf{PhenoFlow}, a human-LLM driven VA system where the LLM acts as a data wrangler through natural language interaction in a clinical domain.
+\end{itemize}
+
+\section{Planned Technical Approach}
+
+The system extends existing framework with a new \texttt{ai/} module containing three components:
+
+\begin{enumerate}[noitemsep]
+  \item \textbf{AutoML Engine} --- Uses FLAML to automatically search over multiple model families (Ridge, Random Forest, XGBoost, LightGBM, Extra Trees) with cross-validation on the CMP dataset. Replaces the current manual model selector.
+
+  \item \textbf{LLM Agent} --- A local LLM (Qwen 3.5 via Ollama) with tool-calling capabilities. The agent has access to structured tools for querying data, running ML operations, and generating Plotly charts. All inference runs locally with no cloud dependency.
+
+  \item \textbf{Chat Interface} --- A new Dash tab replacing the current Predict Removal tab. Presents a conversational interface with inline interactive charts. The agent proactively greets the user with a data summary and offers to build a prediction model.
+\end{enumerate}
+
+The key design principle: \textbf{use AutoML for statistical decisions, use the LLM for language tasks.} The LLM never selects models or computes numbers---it calls tools that do the computation, then explains the results in plain English.
+
+\section{Selected Datasets}
+
+Real CMP sensor data collected with the real industry tribometer:
+\begin{itemize}[noitemsep]
+  \item \textbf{Time-series:} $F_z$ (down-force), $F_y$ (friction), IR temperature, pad velocity, pressure at $\sim$100\,Hz
+  \item \textbf{Summary metrics:} COF, removal rate, WIWNU, Sommerfeld number, Preston number
+  \item \textbf{Categorical variables:} wafer type, pad type, slurry type, conditioner type
+  \item \textbf{Scale:} 15--80 polishing runs per project, each 60--120 seconds
+  \item \textbf{Target variable:} Material removal (Angstroms)
+\end{itemize}
+
+\section{Expected Results and Evaluation}
+
+\textbf{Evaluation approach:} Case study with domain expert comparison.
+
+\begin{enumerate}[noitemsep]
+  \item \textbf{Prediction accuracy:} Compare AutoML-selected model ($R^2$, RMSE) against the existing manual Ridge/Random Forest baselines on held-out test runs.
+
+  \item \textbf{Case study:} A polishing process expert performs three tasks (identify best slurry, predict removal for a new configuration, explain a feature importance) both with and without the AI agent. We measure task completion time, number of steps, and user confidence.
+
+  \item \textbf{Agent reliability:} Measure tool-calling success rate and factual accuracy of agent responses against ground truth data values.
+\end{enumerate}
+
+We expect AutoML to match or exceed manual model selection accuracy, and the conversational interface to reduce the number of steps required for analytical tasks compared to navigating dashboard tabs manually.
+
+\begin{thebibliography}{3}
+
+\bibitem{lightva2024}
+Y.~Zhao, J.~Wang, L.~Xiang, X.~Zhang, Z.~Guo, C.~Turkay, Y.~Zhang, and S.~Chen,
+``LightVA: Lightweight Visual Analytics with LLM Agent-Based Task Planning and Execution,''
+\textit{IEEE TVCG}, 2024.
+
+\bibitem{leva2024}
+Y.~Zhao, Y.~Zhang, Y.~Zhang, X.~Zhao, J.~Wang, Z.~Shao, C.~Turkay, and S.~Chen,
+``LEVA: Using Large Language Models to Enhance Visual Analytics,''
+\textit{IEEE TVCG}, 2024.
+
+\bibitem{phenoflow2024}
+J.~Kim, S.~Lee, H.~Jeon, K.-J.~Lee, H.-J.~Bae, B.~Kim, and J.~Seo,
+``PhenoFlow: A Human-LLM Driven Visual Analytics System for Exploring Large and Complex Stroke Datasets,''
+\textit{IEEE TVCG}, 2024.
+
+\end{thebibliography}
+
+\end{document}

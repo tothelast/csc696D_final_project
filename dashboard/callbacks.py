@@ -11,10 +11,10 @@ from dash import Input, Output, State
 from dashboard.callbacks_compare import register_compare_callbacks
 from dashboard.callbacks_single import register_single_file_callbacks
 from dashboard.callbacks_correlations import register_correlation_callbacks
-from dashboard.callbacks_prediction import register_prediction_callbacks
+from ai.callbacks_agent import register_agent_callbacks
 
 
-def register_callbacks(app, data_manager):
+def register_callbacks(app, data_manager, agent_engine=None):
     """Register all Dash callbacks on the given app instance."""
 
     # =========================================================================
@@ -234,4 +234,5 @@ def register_callbacks(app, data_manager):
     register_compare_callbacks(app, data_manager)
     register_single_file_callbacks(app, data_manager)
     register_correlation_callbacks(app, data_manager)
-    register_prediction_callbacks(app, data_manager)
+    if agent_engine is not None:
+        register_agent_callbacks(app, data_manager, agent_engine)
