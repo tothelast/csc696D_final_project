@@ -9,7 +9,7 @@ import logging
 from queue import Empty
 
 import plotly
-from dash import Input, Output, State, callback_context, html, dcc, no_update
+from dash import Input, Output, State, callback_context, html, no_update
 
 from ai.agent import AgentEngine, StreamChunk
 
@@ -79,16 +79,22 @@ def register_agent_callbacks(app, data_manager, agent_engine: AgentEngine):
          Output('agent-processing', 'data', allow_duplicate=True),
          Output('agent-model-badge', 'children'),
          Output('agent-model-badge', 'className'),
-         Output('agent-suggestions', 'style')],
+         Output('agent-suggestions', 'style'),
+         Output('agent-chart-history', 'data', allow_duplicate=True),
+         Output('agent-chart-index', 'data', allow_duplicate=True)],
         [Input('agent-poll-interval', 'n_intervals')],
         [State('agent-chat-area', 'children'),
          State('agent-pending-message', 'data'),
-         State('agent-processing', 'data')],
+         State('agent-processing', 'data'),
+         State('agent-chart-history', 'data'),
+         State('agent-chart-index', 'data')],
         prevent_initial_call=True,
     )
-    def poll_response(n_intervals, current_children, pending_msg, is_processing):
+    def poll_response(n_intervals, current_children, pending_msg, is_processing,
+                       chart_history, chart_index):
         if not is_processing:
-            return no_update, True, no_update, no_update, no_update, no_update
+            return (no_update, True, no_update, no_update, no_update, no_update,
+                    no_update, no_update)
 
         children = list(current_children) if current_children else []
 
@@ -188,17 +194,21 @@ def register_agent_callbacks(app, data_manager, agent_engine: AgentEngine):
                     )
                 )
 
-        # Add charts inline
-        for chart_data in charts:
-            children.append(
-                html.Div(className='agent-chart-container', children=[
-                    dcc.Graph(
-                        figure=chart_data,
-                        config={'displayModeBar': True, 'displaylogo': False},
-                        style={'height': '380px'},
-                    ),
-                ])
-            )
+        # Route charts to the canvas history store; reference them in chat
+        history_out = no_update
+        index_out = no_update
+        if charts:
+            history = list(chart_history) if chart_history else []
+            for chart_data in charts:
+                history.append(chart_data)
+                children.append(
+                    html.Div(
+                        f"[Chart {len(history)} generated \u2192]",
+                        className='agent-message system',
+                    )
+                )
+            history_out = history
+            index_out = len(history) - 1  # jump to newest
 
         # Handle errors
         if error_msg:
@@ -234,9 +244,12 @@ def register_agent_callbacks(app, data_manager, agent_engine: AgentEngine):
                 model_text,
                 model_class,
                 {'display': 'none'},  # hide suggestions after first message
+                history_out,
+                index_out,
             )
 
-        return children, no_update, no_update, no_update, no_update, no_update
+        return (children, no_update, no_update, no_update, no_update, no_update,
+                history_out, index_out)
 
     # == Callback 3: Tab activation — greeting ==============================
     @app.callback(
@@ -281,6 +294,73 @@ def register_agent_callbacks(app, data_manager, agent_engine: AgentEngine):
             ollama_class = "agent-status-badge"
 
         return children, data_badge, ollama_text, ollama_class
+
+    # == Callback 4: Canvas navigation (prev / next) ========================
+    @app.callback(
+        Output('agent-chart-index', 'data', allow_duplicate=True),
+        [Input('agent-canvas-prev', 'n_clicks'),
+         Input('agent-canvas-next', 'n_clicks')],
+        [State('agent-chart-index', 'data'),
+         State('agent-chart-history', 'data')],
+        prevent_initial_call=True,
+    )
+    def navigate_canvas(prev_clicks, next_clicks, index, history):
+        ctx = callback_context
+        if not ctx.triggered or not history:
+            return no_update
+
+        trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
+        idx = index if index is not None else -1
+
+        if trigger_id == 'agent-canvas-prev':
+            return max(0, idx - 1)
+        if trigger_id == 'agent-canvas-next':
+            return min(len(history) - 1, idx + 1)
+        return no_update
+
+    # == Callback 5: Canvas render ==========================================
+    @app.callback(
+        [Output('agent-canvas-graph', 'figure'),
+         Output('agent-canvas-graph', 'style'),
+         Output('agent-canvas-empty', 'style'),
+         Output('agent-canvas-counter', 'children'),
+         Output('agent-canvas-prev', 'disabled'),
+         Output('agent-canvas-next', 'disabled')],
+        [Input('agent-chart-history', 'data'),
+         Input('agent-chart-index', 'data')],
+        prevent_initial_call=False,
+    )
+    def render_canvas(history, index):
+        history = history or []
+        total = len(history)
+
+        graph_visible = {'height': '100%', 'width': '100%', 'display': 'block'}
+        graph_hidden = {'height': '100%', 'width': '100%', 'display': 'none'}
+        empty_visible = {}  # use CSS defaults
+        empty_hidden = {'display': 'none'}
+
+        if total == 0:
+            return (
+                {'data': [], 'layout': {}},
+                graph_hidden,
+                empty_visible,
+                "0 / 0",
+                True,
+                True,
+            )
+
+        idx = index if index is not None else -1
+        if idx < 0 or idx >= total:
+            idx = total - 1
+
+        return (
+            history[idx],
+            graph_visible,
+            empty_hidden,
+            f"{idx + 1} / {total}",
+            idx == 0,
+            idx == total - 1,
+        )
 
 
 # ---------------------------------------------------------------------------

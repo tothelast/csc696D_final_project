@@ -832,7 +832,7 @@ INDEX_STRING = '''
                 gap: 12px;
             }
             .agent-message {
-                max-width: 85%;
+                max-width: 95%;
                 padding: 10px 14px;
                 border-radius: 12px;
                 font-size: 13px;
@@ -933,6 +933,75 @@ INDEX_STRING = '''
                 margin: 8px 0;
                 border-radius: 8px;
                 overflow: hidden;
+            }
+            /* ── AI Agent Split (chat + canvas) ───────────────────────── */
+            .agent-split {
+                display: flex;
+                flex-direction: row;
+                gap: 0;
+            }
+            .agent-chat-column {
+                flex: 0 0 40%;
+                display: flex;
+                flex-direction: column;
+                border-right: 1px solid #404040;
+                min-width: 0;
+            }
+            .agent-canvas-column {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                background: #1e1e1e;
+                padding: 12px;
+                min-width: 0;
+            }
+            .agent-canvas-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 4px 8px 10px;
+                border-bottom: 1px solid #3d3d3d;
+                font-size: 13px;
+                color: #a0a0a0;
+                font-weight: 600;
+            }
+            .agent-canvas-body {
+                flex: 1;
+                position: relative;
+                min-height: 0;
+            }
+            .agent-canvas-empty {
+                position: absolute;
+                inset: 0;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: #666666;
+                font-size: 13px;
+                font-style: italic;
+            }
+            .agent-canvas-footer {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                gap: 12px;
+                padding: 8px 0 0;
+            }
+            .agent-canvas-nav-btn {
+                background: #353535;
+                border: 1px solid #404040;
+                color: #e0e0e0;
+                border-radius: 6px;
+                padding: 6px 14px;
+                font-size: 12px;
+                cursor: pointer;
+            }
+            .agent-canvas-nav-btn:hover:not(:disabled) {
+                border-color: #3b82f6;
+            }
+            .agent-canvas-nav-btn:disabled {
+                opacity: 0.4;
+                cursor: not-allowed;
             }
         </style>
     </head>
