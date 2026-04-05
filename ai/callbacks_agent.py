@@ -9,9 +9,18 @@ import logging
 from queue import Empty
 
 import plotly
-from dash import Input, Output, State, callback_context, html, no_update
+from dash import ALL, Input, Output, State, callback_context, html, no_update
 
 from ai.agent import AgentEngine, StreamChunk
+from dashboard.constants import (
+    PREDICTION_CATEGORICAL_FEATURES,
+    PREDICTION_NUMERICAL_FEATURES,
+)
+
+
+def _feature_id(feature: str) -> str:
+    """Mirror of dashboard.layouts._feature_id_suffix for agent-pred-* IDs."""
+    return 'agent-pred-' + feature.replace(' PSI', '').lower().replace(' ', '-')
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +90,9 @@ def register_agent_callbacks(app, data_manager, agent_engine: AgentEngine):
          Output('agent-model-badge', 'className'),
          Output('agent-suggestions', 'style'),
          Output('agent-chart-history', 'data', allow_duplicate=True),
-         Output('agent-chart-index', 'data', allow_duplicate=True)],
+         Output('agent-chart-index', 'data', allow_duplicate=True),
+         Output('agent-automl-trained', 'data', allow_duplicate=True),
+         Output('agent-pred-prefill', 'data', allow_duplicate=True)],
         [Input('agent-poll-interval', 'n_intervals')],
         [State('agent-chat-area', 'children'),
          State('agent-pending-message', 'data'),
@@ -94,7 +105,7 @@ def register_agent_callbacks(app, data_manager, agent_engine: AgentEngine):
                        chart_history, chart_index):
         if not is_processing:
             return (no_update, True, no_update, no_update, no_update, no_update,
-                    no_update, no_update)
+                    no_update, no_update, no_update, no_update)
 
         children = list(current_children) if current_children else []
 
@@ -110,6 +121,7 @@ def register_agent_callbacks(app, data_manager, agent_engine: AgentEngine):
         text_buffer = ""
         thinking_buffer = ""
         charts = []
+        prefill_payload = None
         is_done = False
         error_msg = None
 
@@ -127,6 +139,8 @@ def register_agent_callbacks(app, data_manager, agent_engine: AgentEngine):
                 charts.append(chunk.content)
             elif chunk.type == "charts":
                 charts.extend(chunk.content)
+            elif chunk.type == "prefill":
+                prefill_payload = chunk.content
             elif chunk.type == "done":
                 is_done = True
             elif chunk.type == "error":
@@ -219,6 +233,11 @@ def register_agent_callbacks(app, data_manager, agent_engine: AgentEngine):
                 )
             )
 
+        # Flip the trained flag whenever AutoMLManager has a fitted model; the
+        # form-reveal callback watches this store.
+        trained_out = bool(_engine.automl_manager.automl is not None)
+        prefill_out = prefill_payload if prefill_payload is not None else no_update
+
         # Finalize
         if is_done:
             # Remove loading indicator and thinking elements
@@ -246,10 +265,12 @@ def register_agent_callbacks(app, data_manager, agent_engine: AgentEngine):
                 {'display': 'none'},  # hide suggestions after first message
                 history_out,
                 index_out,
+                trained_out,
+                prefill_out,
             )
 
         return (children, no_update, no_update, no_update, no_update, no_update,
-                history_out, index_out)
+                history_out, index_out, trained_out, prefill_out)
 
     # == Callback 3: Tab activation — greeting ==============================
     @app.callback(
@@ -361,6 +382,161 @@ def register_agent_callbacks(app, data_manager, agent_engine: AgentEngine):
             idx == 0,
             idx == total - 1,
         )
+
+    # == Callback 6: Reveal prediction form + populate options on train =====
+    _cat_option_outputs = [
+        Output(_feature_id(f), 'options') for f in PREDICTION_CATEGORICAL_FEATURES
+    ]
+
+    @app.callback(
+        [Output('agent-pred-form', 'style'),
+         Output('agent-pred-empty', 'style'),
+         *_cat_option_outputs],
+        Input('agent-automl-trained', 'data'),
+        prevent_initial_call=False,
+    )
+    def reveal_prediction_form(trained):
+        """Show the form and populate each dropdown from training categories
+        when the agent finishes training a model. Generalised: iterates
+        PREDICTION_CATEGORICAL_FEATURES so adding a column only requires
+        updating dashboard/constants.py."""
+        if not trained or _engine.automl_manager.automl is None:
+            hidden_form = {'display': 'none'}
+            shown_empty = {}
+            empty_opts = [[] for _ in PREDICTION_CATEGORICAL_FEATURES]
+            return (hidden_form, shown_empty, *empty_opts)
+
+        cat_opts = _engine.automl_manager.get_category_options()
+        options_per_feature = []
+        for feat in PREDICTION_CATEGORICAL_FEATURES:
+            vals = cat_opts.get(feat, [])
+            options_per_feature.append([{'label': v, 'value': v} for v in vals])
+
+        shown_form = {'display': 'flex', 'flexDirection': 'column', 'gap': '8px',
+                      'paddingTop': '8px'}
+        hidden_empty = {'display': 'none'}
+        return (shown_form, hidden_empty, *options_per_feature)
+
+    # == Callback 7: Apply agent-supplied prefill to form fields ============
+    _all_value_outputs = (
+        [Output(_feature_id(f), 'value', allow_duplicate=True)
+         for f in PREDICTION_CATEGORICAL_FEATURES] +
+        [Output(_feature_id(f), 'value', allow_duplicate=True)
+         for f in PREDICTION_NUMERICAL_FEATURES]
+    )
+
+    @app.callback(
+        _all_value_outputs,
+        Input('agent-pred-prefill', 'data'),
+        prevent_initial_call=True,
+    )
+    def apply_prefill(prefill):
+        """When the LLM's open_prediction_form tool emits a prefill payload,
+        drop each provided value into the corresponding form field; leave
+        unprovided fields untouched."""
+        if not prefill:
+            return [no_update] * (
+                len(PREDICTION_CATEGORICAL_FEATURES) + len(PREDICTION_NUMERICAL_FEATURES)
+            )
+        values = []
+        for feat in PREDICTION_CATEGORICAL_FEATURES + PREDICTION_NUMERICAL_FEATURES:
+            if feat in prefill and prefill[feat] is not None:
+                values.append(prefill[feat])
+            else:
+                values.append(no_update)
+        return values
+
+    # == Callback 8: Compute prediction when user clicks the canvas Predict =
+    _all_value_states = (
+        [State(_feature_id(f), 'value') for f in PREDICTION_CATEGORICAL_FEATURES] +
+        [State(_feature_id(f), 'value') for f in PREDICTION_NUMERICAL_FEATURES]
+    )
+
+    @app.callback(
+        Output('agent-pred-result', 'children'),
+        Input('agent-pred-predict-btn', 'n_clicks'),
+        _all_value_states,
+        prevent_initial_call=True,
+    )
+    def canvas_predict(n_clicks, *values):
+        """Validate form inputs and call AutoMLManager.predict() directly.
+
+        Predictions are deterministic code-paths — the LLM is not involved,
+        and dropdown bindings guarantee each categorical value matches a
+        trained category (so the category-dtype bug cannot recur here)."""
+        if not n_clicks:
+            return no_update
+        if _engine.automl_manager.automl is None:
+            return html.P("Train a model first.",
+                           style={'color': '#707070', 'fontSize': '13px'})
+
+        n_cat = len(PREDICTION_CATEGORICAL_FEATURES)
+        cat_values = values[:n_cat]
+        num_values_raw = values[n_cat:]
+
+        # Validate
+        missing = []
+        for feat, val in zip(PREDICTION_CATEGORICAL_FEATURES, cat_values):
+            if not val:
+                missing.append(feat)
+        num_values = []
+        for feat, raw in zip(PREDICTION_NUMERICAL_FEATURES, num_values_raw):
+            try:
+                num_values.append(float(raw))
+            except (TypeError, ValueError):
+                missing.append(feat)
+                num_values.append(None)
+        if missing:
+            return html.P(
+                f"Please fill in: {', '.join(missing)}",
+                style={'color': '#ef4444', 'fontSize': '13px'},
+            )
+
+        # AutoMLManager.predict() currently expects fixed kwargs. If the
+        # feature list grows, extend predict() alongside this dict.
+        kwargs = dict(zip(
+            PREDICTION_CATEGORICAL_FEATURES,
+            [v.strip() if isinstance(v, str) else v for v in cat_values],
+        ))
+        kwargs['pressure_psi'] = num_values[
+            PREDICTION_NUMERICAL_FEATURES.index('Pressure PSI')
+        ]
+        kwargs['polish_time'] = num_values[
+            PREDICTION_NUMERICAL_FEATURES.index('Polish Time')
+        ]
+        # Normalize categorical kwargs to predict()'s parameter names.
+        cat_rename = {'Wafer': 'wafer', 'Pad': 'pad', 'Slurry': 'slurry',
+                      'Conditioner': 'conditioner'}
+        kwargs = {cat_rename.get(k, k): v for k, v in kwargs.items()}
+
+        try:
+            result = _engine.automl_manager.predict(**kwargs)
+        except Exception as exc:
+            return html.P(f"Prediction failed: {exc}",
+                           style={'color': '#ef4444', 'fontSize': '13px'})
+
+        m = _engine.automl_manager.metrics or {}
+        children = [
+            html.Span(f"Predicted Removal: {result['prediction']:,.0f} \u00c5",
+                      style={'fontSize': '18px', 'fontWeight': '600',
+                              'color': '#e0e0e0'}),
+            html.Br(),
+            html.Span(f"Uncertainty: \u00b1 {result['uncertainty']:,.0f} \u00c5",
+                      style={'fontSize': '12px', 'color': '#a0a0a0'}),
+            html.Br(),
+            html.Span(
+                f"{result['model']} \u2022 R\u00b2 = {m.get('r2', 0):.3f} "
+                f"\u2022 trained on {result['n_train']} files",
+                style={'fontSize': '11px', 'color': '#707070'},
+            ),
+        ]
+        if result.get('clamped'):
+            children.append(
+                html.P("Note: model predicted negative removal \u2014 clamped to 0.",
+                        style={'color': '#f59e0b', 'fontSize': '11px',
+                               'marginTop': '6px'})
+            )
+        return html.Div(children)
 
 
 # ---------------------------------------------------------------------------

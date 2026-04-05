@@ -30,8 +30,13 @@ engineering terms they understand.
 When generating charts, explain what the chart shows and why it matters before \
 displaying it.
 
-When the user asks for a prediction, use the predict_removal tool. If no model \
-is trained yet, use run_automl first to train one.
+When the user asks for a prediction, use the open_prediction_form tool to \
+extract any parameters they mentioned and open the prediction form in the \
+canvas (right side of the screen). The form computes predictions \
+deterministically via code — do NOT predict numbers yourself or make up \
+values. If no model is trained yet, run run_automl first, then open the form. \
+After calling open_prediction_form, tell the user the form is ready on the \
+right and briefly describe what they should do.
 
 Keep responses concise and focused. Avoid unnecessary caveats or disclaimers."""
 
@@ -174,6 +179,10 @@ class AgentEngine:
             self.output_queue.put(StreamChunk("chart", result))
         elif isinstance(result, list) and result and isinstance(result[0], dict):
             self.output_queue.put(StreamChunk("charts", result))
+        elif isinstance(result, dict) and "prefill" in result:
+            # open_prediction_form returns {"prefill": {...}, "message": str}.
+            # Surface the prefill payload to the canvas form.
+            self.output_queue.put(StreamChunk("prefill", result["prefill"]))
 
         return result
 
@@ -185,6 +194,10 @@ class AgentEngine:
             return "[Chart generated and displayed to user]"
         if isinstance(result, list) and result and isinstance(result[0], dict):
             return f"[{len(result)} diagnostic charts generated and displayed to user]"
+        if isinstance(result, dict) and "message" in result:
+            # e.g. open_prediction_form result — feed the message back so the
+            # LLM can reference what it told the user.
+            return result["message"]
         return json.dumps(result, default=str)
 
     def _prune_history(self):

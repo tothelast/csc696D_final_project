@@ -203,7 +203,7 @@ class AgentTools:
             time_budget: Maximum seconds to search for the best model. Default 60.
 
         Returns:
-            Best model name, top-5 leaderboard, cross-validation metrics, and feature importances.
+            Best model name, top-5 leaderboard, held-out 5-fold CV metrics, and feature importances.
         """
         try:
             results = self.ml.train(time_budget=time_budget)
@@ -212,9 +212,9 @@ class AgentTools:
 
         lines = [f"AutoML complete. Best model: {results['best_model']}"]
         lines.append(
-            f"Metrics: R²={results['metrics']['r2']:.3f}, "
-            f"RMSE={results['metrics']['rmse']:.0f}Å, "
-            f"MAE={results['metrics']['mae']:.0f}Å, "
+            f"Held-out CV metrics: R²={results['metrics']['r2']:.3f}, "
+            f"CV RMSE={results['metrics']['rmse']:.0f}Å, "
+            f"CV MAE={results['metrics']['mae']:.0f}Å, "
             f"trained on {results['n_train']} files."
         )
 
@@ -238,54 +238,115 @@ class AgentTools:
 
         return "\n".join(lines)
 
-    def predict_removal(
+    def _resolve_category(self, value: str, column: str) -> str:
+        """Map a user-supplied string to an exact training category value.
+
+        Tries exact match → prefix match → substring match (all case-insensitive
+        after exact). Raises ValueError listing valid options if the value is
+        unknown or ambiguous.
+        """
+        known = self.ml.get_category_options().get(column, [])
+        if not known:
+            raise ValueError(
+                f"No trained categories for {column}. Train a model first."
+            )
+        if value in known:
+            return value
+        vl = value.lower().strip()
+        # prefix match either direction
+        prefix = [k for k in known
+                  if k.lower().startswith(vl) or vl.startswith(k.lower())]
+        if len(prefix) == 1:
+            return prefix[0]
+        # substring match either direction
+        sub = [k for k in known if vl in k.lower() or k.lower() in vl]
+        if len(sub) == 1:
+            return sub[0]
+        raise ValueError(
+            f"Unknown {column} value '{value}'. Valid options: {', '.join(known)}"
+        )
+
+    def open_prediction_form(
         self,
-        pressure_psi: float,
-        polish_time: float,
-        wafer: str,
-        pad: str,
-        slurry: str,
-        conditioner: str,
-    ) -> str:
-        """Predict material removal for given polishing conditions.
+        pressure_psi: float = None,
+        polish_time: float = None,
+        wafer: str = None,
+        pad: str = None,
+        slurry: str = None,
+        conditioner: str = None,
+    ) -> dict:
+        """Open the prediction form in the canvas, pre-filled with any values the user mentioned.
+
+        The prediction itself is computed deterministically when the user
+        clicks Predict in the form — do NOT try to predict numbers yourself.
+        Any categorical values you pass here are resolved to the exact trained
+        category names (e.g. 'CU4545F' -> 'CU4545F-300'). Pass only what the
+        user mentioned; leave the rest as None.
 
         Args:
-            pressure_psi: Down force pressure in PSI.
-            polish_time: Polish duration in minutes.
-            wafer: Wafer type identifier.
-            pad: Pad type identifier.
-            slurry: Slurry type identifier.
-            conditioner: Conditioner disk type identifier.
+            pressure_psi: Down force pressure in PSI (optional).
+            polish_time: Polish duration in minutes (optional).
+            wafer: Wafer type (optional).
+            pad: Pad type (optional).
+            slurry: Slurry type (optional).
+            conditioner: Conditioner disk type (optional).
 
         Returns:
-            Predicted removal in Angstroms with uncertainty estimate and model info.
+            Dict with 'prefill' payload and a short text message.
         """
-        try:
-            result = self.ml.predict(
-                pressure_psi=pressure_psi,
-                polish_time=polish_time,
-                wafer=wafer,
-                pad=pad,
-                slurry=slurry,
-                conditioner=conditioner,
-            )
-        except ValueError as exc:
-            return f"Cannot predict: {exc}"
+        if self.ml.automl is None:
+            return {
+                "message": (
+                    "No model trained yet. Run AutoML first, then I'll open "
+                    "the prediction form for you."
+                )
+            }
 
-        lines = [
-            f"Predicted Removal: {result['prediction']:.0f} Å",
-            f"Uncertainty: ±{result['uncertainty']:.0f} Å",
-            f"Model: {result['model']} (R²={result['r2']:.3f}, trained on {result['n_train']} files)",
-        ]
-        if result["clamped"]:
-            lines.append("Note: prediction was negative and clamped to 0.")
-        return "\n".join(lines)
+        # Resolve each provided categorical value; raise with a helpful error
+        # if the match is ambiguous or unknown.
+        provided = {
+            'Wafer': wafer, 'Pad': pad, 'Slurry': slurry, 'Conditioner': conditioner,
+        }
+        prefill = {}
+        try:
+            for col, val in provided.items():
+                if val is not None and str(val).strip():
+                    prefill[col] = self._resolve_category(str(val), col)
+        except ValueError as exc:
+            return {"message": f"Cannot open form: {exc}"}
+
+        if pressure_psi is not None:
+            prefill['Pressure PSI'] = float(pressure_psi)
+        if polish_time is not None:
+            prefill['Polish Time'] = float(polish_time)
+
+        cat_opts = self.ml.get_category_options()
+        options_summary = " | ".join(
+            f"{col}: {', '.join(vals)}" for col, vals in cat_opts.items() if vals
+        )
+
+        if prefill:
+            filled = ", ".join(f"{k}={v}" for k, v in prefill.items())
+            msg = (
+                f"Prediction form opened in the canvas with these values "
+                f"pre-filled: {filled}. Review them and click **Predict**. "
+                f"Available options \u2014 {options_summary}."
+            )
+        else:
+            msg = (
+                "Prediction form is available in the canvas. Pick the Wafer, "
+                "Pad, Slurry, Conditioner from the dropdowns, type Pressure "
+                "(PSI) and Polish Time (min), then click **Predict**. "
+                f"Available options \u2014 {options_summary}."
+            )
+
+        return {"prefill": prefill, "message": msg}
 
     def get_model_diagnostics(self) -> str:
         """Get detailed diagnostics for the currently trained model.
 
         Returns:
-            Residual statistics, cross-validation metrics, data quality warnings, and model hyperparameters.
+            Residual statistics, held-out 5-fold CV metrics, data quality warnings, and model hyperparameters.
         """
         try:
             diag = self.ml.get_diagnostics()
@@ -294,9 +355,9 @@ class AgentTools:
 
         lines = [
             f"Model: {diag['metrics']['best_model']}",
-            f"R²={diag['metrics']['r2']:.3f}, RMSE={diag['metrics']['rmse']:.0f}Å, MAE={diag['metrics']['mae']:.0f}Å",
+            f"Held-out CV: R²={diag['metrics']['r2']:.3f}, RMSE={diag['metrics']['rmse']:.0f}Å, MAE={diag['metrics']['mae']:.0f}Å",
             f"Trained on {diag['metrics']['n_train']} files.",
-            f"\nResiduals: mean={diag['residual_mean']:.1f}, std={diag['residual_std']:.1f}, "
+            f"\nOOF residuals: mean={diag['residual_mean']:.1f}, std={diag['residual_std']:.1f}, "
             f"range=[{diag['residual_min']:.1f}, {diag['residual_max']:.1f}]",
             f"\nBest config: {diag['best_config']}",
         ]
@@ -619,7 +680,7 @@ class AgentTools:
             self.get_feature_statistics,
             self.detect_outliers,
             self.run_automl,
-            self.predict_removal,
+            self.open_prediction_form,
             self.get_model_diagnostics,
             self.generate_scatter,
             self.generate_distribution,

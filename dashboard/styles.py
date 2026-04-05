@@ -950,10 +950,40 @@ INDEX_STRING = '''
             .agent-canvas-column {
                 flex: 1;
                 display: flex;
-                flex-direction: column;
+                flex-direction: row;
                 background: #1e1e1e;
+                padding: 0;
+                min-width: 0;
+            }
+            .agent-canvas-form-section {
+                flex: 0 0 50%;
+                display: flex;
+                flex-direction: column;
+                border-right: 1px solid #404040;
+                padding: 12px;
+                overflow-y: auto;
+                min-width: 0;
+            }
+            .agent-canvas-charts-section {
+                flex: 0 0 50%;
+                display: flex;
+                flex-direction: column;
                 padding: 12px;
                 min-width: 0;
+            }
+            /* When the empty-state placeholder lives inside the form section
+               it should flow in the flex column, not absolutely overlay it. */
+            .agent-canvas-form-section .agent-canvas-empty {
+                position: static;
+                flex: 1;
+                padding: 20px;
+                text-align: center;
+            }
+            #agent-pred-form {
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+                padding-top: 8px;
             }
             .agent-canvas-header {
                 display: flex;

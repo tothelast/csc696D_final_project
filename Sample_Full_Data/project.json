@@ -1,0 +1,2091 @@
+{
+  "report": {
+    "files": [
+      {
+        "file_name": "data/01_Sample_300Cu_CH052_WFT300E-WG-flat_CU4545F-300_Saesol-LPX-DP2-4-5lbf_1-5P_42-39V_in60s_r01.dat",
+        "wafer_num": 1,
+        "removal": 77.0,
+        "nu": 177.3,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7.0,
+          57.0
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          },
+          "1": {
+            "y_min": 38.629914175,
+            "y_max": 196.685304525
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "Cu",
+        "pad_type": "CH052",
+        "conditioner_disk_type": "Saesol-LPX-DP2-4-5lbf",
+        "pressure_psi": 1.5,
+        "polish_time": 0.6,
+        "date": "2025-10-29"
+      },
+      {
+        "file_name": "data/01_Sample_300Ox_CH052_WFT300E-WG-flat_CU4545F-300_Saesol-LPX-DP2-4-5lbf_1-5P_42-39V_in60s_r01.dat",
+        "wafer_num": 3,
+        "removal": 98.0,
+        "nu": 21.1,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7.0,
+          57.0
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "Ox",
+        "pad_type": "CH052",
+        "conditioner_disk_type": "Saesol-LPX-DP2-4-5lbf",
+        "pressure_psi": 1.5,
+        "polish_time": 0.6,
+        "date": "2025-10-28"
+      },
+      {
+        "file_name": "data/01_Sample_300Ox_CH059_WFT300E-WG-flat_CU4545F-300_Saesol-LPX-DP2-4-5lbf_1-5P_42-39V_in60s_r01.dat",
+        "wafer_num": 4,
+        "removal": 22.0,
+        "nu": 42.2,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "Ox",
+        "pad_type": "CH059",
+        "conditioner_disk_type": "Saesol-LPX-DP2-4-5lbf",
+        "pressure_psi": 1.5,
+        "polish_time": 0.6,
+        "date": "2025-11-03"
+      },
+      {
+        "file_name": "data/01_Sample_300Ox_FjH800_WFT300E-WG-flat_CU4545F-300_3MA82AF-3lbf_1-5P_42-39V_in60s_r01.dat",
+        "wafer_num": 5,
+        "removal": 389.0,
+        "nu": 12.4,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "Ox",
+        "pad_type": "FjH800",
+        "conditioner_disk_type": "3MA82AF-3lbf",
+        "pressure_psi": 1.5,
+        "polish_time": 0.6,
+        "date": "2025-11-06"
+      },
+      {
+        "file_name": "data/01_Sample_300Ox_FjH800_WFT300E-WG-flat_CU4545F-300_3MA82AF-3lbf_2P_63-61V_in60s_r01.dat",
+        "wafer_num": 6,
+        "removal": 770.0,
+        "nu": 11.9,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "Ox",
+        "pad_type": "FjH800",
+        "conditioner_disk_type": "3MA82AF-3lbf",
+        "pressure_psi": 2.0,
+        "polish_time": 0.6,
+        "date": "2025-11-11"
+      },
+      {
+        "file_name": "data/01_Sample_300TaN_CH052_WFT300E-WG-flat_CU4545F-300_Saesol-LPX-DP2-4-5lbf_1-5P_42-39V_in60s_r01.dat",
+        "wafer_num": 7,
+        "removal": 193.0,
+        "nu": 33.0,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "TaN",
+        "pad_type": "CH052",
+        "conditioner_disk_type": "Saesol-LPX-DP2-4-5lbf",
+        "pressure_psi": 1.5,
+        "polish_time": 0.6,
+        "date": "2025-10-30"
+      },
+      {
+        "file_name": "data/01_Sample_300TaN_FjH800_WFT300E-WG-flat_CU4545F-300_3MA82AF-3lbf_2P_42-39V_in60s_r01.dat",
+        "wafer_num": 8,
+        "removal": 639.0,
+        "nu": 10.3,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "TaN",
+        "pad_type": "FjH800",
+        "conditioner_disk_type": "3MA82AF-3lbf",
+        "pressure_psi": 2.0,
+        "polish_time": 0.6,
+        "date": "2025-11-10"
+      },
+      {
+        "file_name": "data/02_Sample_300Cu_CH052_WFT300E-WG-flat_CU4545F-300_Saesol-LPX-DP2-4-5lbf_1-5P_63-61V_in60s_r01.dat",
+        "wafer_num": 9,
+        "removal": 124.0,
+        "nu": 108.9,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "Cu",
+        "pad_type": "CH052",
+        "conditioner_disk_type": "Saesol-LPX-DP2-4-5lbf",
+        "pressure_psi": 1.5,
+        "polish_time": 0.6,
+        "date": "2025-10-29"
+      },
+      {
+        "file_name": "data/02_Sample_300Cu_FjH800_WFT300E-WG-flat_CU4545F-300_3MA82AF-3lbf_1-5P_42-39V_in60s_r01.dat",
+        "wafer_num": 11,
+        "removal": 212.0,
+        "nu": 70.8,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "Cu",
+        "pad_type": "FjH800",
+        "conditioner_disk_type": "3MA82AF-3lbf",
+        "pressure_psi": 1.5,
+        "polish_time": 0.6,
+        "date": "2025-11-06"
+      },
+      {
+        "file_name": "data/02_Sample_300Ox_CH052_WFT300E-WG-flat_CU4545F-300_Saesol-LPX-DP2-4-5lbf_1-5P_63-619V_in60s_r01.dat",
+        "wafer_num": 12,
+        "removal": 108.0,
+        "nu": 25.5,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          },
+          "2": {
+            "y_min": 19.1452275,
+            "y_max": 24.9284225
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "Ox",
+        "pad_type": "CH052",
+        "conditioner_disk_type": "Saesol-LPX-DP2-4-5lbf",
+        "pressure_psi": 1.5,
+        "polish_time": 0.6,
+        "date": "2025-10-28"
+      },
+      {
+        "file_name": "data/02_Sample_300Ox_CH059_WFT300E-WG-flat_CU4545F-300_Saesol-LPX-DP2-4-5lbf_1-5P_63-61V_in60s_r01.dat",
+        "wafer_num": 13,
+        "removal": 46.0,
+        "nu": 25.1,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7.0,
+          57.0
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "Ox",
+        "pad_type": "CH059",
+        "conditioner_disk_type": "Saesol-LPX-DP2-4-5lbf",
+        "pressure_psi": 1.5,
+        "polish_time": 0.6,
+        "date": "2025-11-03"
+      },
+      {
+        "file_name": "data/02_Sample_300Ox_FjH800_WFT300E-WG-flat_CU4545F-300_3MA82AF-3lbf_2P_84-81V_in60s_r01.dat",
+        "wafer_num": 14,
+        "removal": 889.0,
+        "nu": 10.0,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          },
+          "2": {
+            "y_min": 20.0942805,
+            "y_max": 26.659069499999998
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "Ox",
+        "pad_type": "FjH800",
+        "conditioner_disk_type": "3MA82AF-3lbf",
+        "pressure_psi": 2.0,
+        "polish_time": 0.6,
+        "date": "2025-11-11"
+      },
+      {
+        "file_name": "data/02_Sample_300TaN_CH052_WFT300E-WG-flat_CU4545F-300_Saesol-LPX-DP2-4-5lbf_1-5P_63-61V_in60s_r01.dat",
+        "wafer_num": 15,
+        "removal": 229.0,
+        "nu": 22.1,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "TaN",
+        "pad_type": "CH052",
+        "conditioner_disk_type": "Saesol-LPX-DP2-4-5lbf",
+        "pressure_psi": 1.5,
+        "polish_time": 0.6,
+        "date": "2025-10-30"
+      },
+      {
+        "file_name": "data/02_Sample_300TaN_FjH800_WFT300E-WG-flat_CU4545F-300_3MA82AF-3lbf_2P_63-61V_in60s_r01.dat",
+        "wafer_num": 16,
+        "removal": 856.0,
+        "nu": 10.2,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "TaN",
+        "pad_type": "FjH800",
+        "conditioner_disk_type": "3MA82AF-3lbf",
+        "pressure_psi": 2.0,
+        "polish_time": 0.6,
+        "date": "2025-11-10"
+      },
+      {
+        "file_name": "data/03_Sample_300Cu_CH052_WFT300E-WG-flat_CU4545F-300_Saesol-LPX-DP2-4-5lbf_1-5P_84-81V_in60s_r01.dat",
+        "wafer_num": 17,
+        "removal": 107.0,
+        "nu": 134.8,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "Cu",
+        "pad_type": "CH052",
+        "conditioner_disk_type": "Saesol-LPX-DP2-4-5lbf",
+        "pressure_psi": 1.5,
+        "polish_time": 0.6,
+        "date": "2025-10-29"
+      },
+      {
+        "file_name": "data/03_Sample_300Cu_FjH800_WFT300E-WG-flat_CU4545F-300_3MA82AF-3lbf_1-5P_63-61V_in60s_r01.dat",
+        "wafer_num": 19,
+        "removal": 339.0,
+        "nu": 44.9,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          },
+          "2": {
+            "y_min": 20.94,
+            "y_max": 26.51
+          },
+          "1": {
+            "y_min": 84.33618812,
+            "y_max": 193.69452248000005
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "Cu",
+        "pad_type": "FjH800",
+        "conditioner_disk_type": "3MA82AF-3lbf",
+        "pressure_psi": 1.5,
+        "polish_time": 0.6,
+        "date": "2025-11-06"
+      },
+      {
+        "file_name": "data/03_Sample_300Ox_CH052_WFT300E-WG-flat_CU4545F-300_Saesol-LPX-DP2-4-5lbf_1-5P_84-81V_in60s_r01.dat",
+        "wafer_num": 20,
+        "removal": 107.0,
+        "nu": 28.6,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "Ox",
+        "pad_type": "CH052",
+        "conditioner_disk_type": "Saesol-LPX-DP2-4-5lbf",
+        "pressure_psi": 1.5,
+        "polish_time": 0.6,
+        "date": "2025-10-28"
+      },
+      {
+        "file_name": "data/03_Sample_300Ox_CH059_WFT300E-WG-flat_CU4545F-300_Saesol-LPX-DP2-4-5lbf_1-5P_84-81V_in60s_r01.dat",
+        "wafer_num": 21,
+        "removal": 72.0,
+        "nu": 18.5,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "Ox",
+        "pad_type": "CH059",
+        "conditioner_disk_type": "Saesol-LPX-DP2-4-5lbf",
+        "pressure_psi": 1.5,
+        "polish_time": 0.6,
+        "date": "2025-11-03"
+      },
+      {
+        "file_name": "data/03_Sample_300Ox_FjH800_WFT300E-WG-flat_CU4545F-300_3MA82AF-3lbf_2-5P_42-39V_in60s_r01.dat",
+        "wafer_num": 22,
+        "removal": 724.0,
+        "nu": 9.3,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "Ox",
+        "pad_type": "FjH800",
+        "conditioner_disk_type": "3MA82AF-3lbf",
+        "pressure_psi": 2.5,
+        "polish_time": 0.6,
+        "date": "2025-11-11"
+      },
+      {
+        "file_name": "data/03_Sample_300TaN_CH052_WFT300E-WG-flat_CU4545F-300_Saesol-LPX-DP2-4-5lbf_1-5P_84-81V_in60s_r01.dat",
+        "wafer_num": 23,
+        "removal": 247.0,
+        "nu": 22.2,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "TaN",
+        "pad_type": "CH052",
+        "conditioner_disk_type": "Saesol-LPX-DP2-4-5lbf",
+        "pressure_psi": 1.5,
+        "polish_time": 0.6,
+        "date": "2025-10-30"
+      },
+      {
+        "file_name": "data/03_Sample_300TaN_FjH800_WFT300E-WG-flat_CU4545F-300_3MA82AF-3lbf_2P_84-81V_in60s_r01.dat",
+        "wafer_num": 24,
+        "removal": 1078.0,
+        "nu": 10.5,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "TaN",
+        "pad_type": "FjH800",
+        "conditioner_disk_type": "3MA82AF-3lbf",
+        "pressure_psi": 2.0,
+        "polish_time": 0.6,
+        "date": "2025-11-10"
+      },
+      {
+        "file_name": "data/04_Sample_300Cu_CH052_WFT300E-WG-flat_CU4545F-300_Saesol-LPX-DP2-4-5lbf_2P_42-39V_in60s_r01.dat",
+        "wafer_num": 25,
+        "removal": 151.0,
+        "nu": 91.5,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "Cu",
+        "pad_type": "CH052",
+        "conditioner_disk_type": "Saesol-LPX-DP2-4-5lbf",
+        "pressure_psi": 2.0,
+        "polish_time": 0.6,
+        "date": "2025-10-29"
+      },
+      {
+        "file_name": "data/04_Sample_300Cu_FjH800_WFT300E-WG-flat_CU4545F-300_3MA82AF-3lbf_1-5P_84-81V_in60s_r01.dat",
+        "wafer_num": 27,
+        "removal": 406.0,
+        "nu": 39.1,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "Cu",
+        "pad_type": "FjH800",
+        "conditioner_disk_type": "3MA82AF-3lbf",
+        "pressure_psi": 1.5,
+        "polish_time": 0.6,
+        "date": "2025-11-06"
+      },
+      {
+        "file_name": "data/04_Sample_300Ox_CH052_WFT300E-WG-flat_CU4545F-300_Saesol-LPX-DP2-4-5lbf_2P_42-39V_in60s_r01.dat",
+        "wafer_num": 28,
+        "removal": 143.0,
+        "nu": 22.7,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "Ox",
+        "pad_type": "CH052",
+        "conditioner_disk_type": "Saesol-LPX-DP2-4-5lbf",
+        "pressure_psi": 2.0,
+        "polish_time": 0.6,
+        "date": "2025-10-28"
+      },
+      {
+        "file_name": "data/04_Sample_300Ox_CH059_WFT300E-WG-flat_CU4545F-300_Saesol-LPX-DP2-4-5lbf_2P_42-39V_in60s_r01.dat",
+        "wafer_num": 29,
+        "removal": 40.0,
+        "nu": 28.3,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "Ox",
+        "pad_type": "CH059",
+        "conditioner_disk_type": "Saesol-LPX-DP2-4-5lbf",
+        "pressure_psi": 2.0,
+        "polish_time": 0.6,
+        "date": "2025-11-03"
+      },
+      {
+        "file_name": "data/04_Sample_300Ox_FjH800_WFT300E-WG-flat_CU4545F-300_3MA82AF-3lbf_2-5P_63-61V_in60s_r01.dat",
+        "wafer_num": 30,
+        "removal": 896.0,
+        "nu": 9.8,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "Ox",
+        "pad_type": "FjH800",
+        "conditioner_disk_type": "3MA82AF-3lbf",
+        "pressure_psi": 2.5,
+        "polish_time": 0.6,
+        "date": "2025-11-11"
+      },
+      {
+        "file_name": "data/04_Sample_300TaN_CH052_WFT300E-WG-flat_CU4545F-300_Saesol-LPX-DP2-4-5lbf_2P_42-39V_in60s_r01.dat",
+        "wafer_num": 31,
+        "removal": 252.0,
+        "nu": 23.9,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "TaN",
+        "pad_type": "CH052",
+        "conditioner_disk_type": "Saesol-LPX-DP2-4-5lbf",
+        "pressure_psi": 2.0,
+        "polish_time": 0.6,
+        "date": "2025-10-30"
+      },
+      {
+        "file_name": "data/04_Sample_300TaN_FjH800_WFT300E-WG-flat_CU4545F-300_3MA82AF-3lbf_2-5P_42-39V_in60s_r01.dat",
+        "wafer_num": 32,
+        "removal": 679.0,
+        "nu": 13.2,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "TaN",
+        "pad_type": "FjH800",
+        "conditioner_disk_type": "3MA82AF-3lbf",
+        "pressure_psi": 2.5,
+        "polish_time": 0.6,
+        "date": "2025-11-10"
+      },
+      {
+        "file_name": "data/05_Sample_300Cu_CH052_WFT300E-WG-flat_CU4545F-300_Saesol-LPX-DP2-4-5lbf_2P_63-61V_in60s_r01.dat",
+        "wafer_num": 33,
+        "removal": 266.0,
+        "nu": 56.8,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "Cu",
+        "pad_type": "CH052",
+        "conditioner_disk_type": "Saesol-LPX-DP2-4-5lbf",
+        "pressure_psi": 2.0,
+        "polish_time": 0.6,
+        "date": "2025-10-29"
+      },
+      {
+        "file_name": "data/05_Sample_300Cu_FjH800_WFT300E-WG-flat_CU4545F-300_3MA82AF-3lbf_2P_42-39V_in60s_r01.dat",
+        "wafer_num": 35,
+        "removal": 302.0,
+        "nu": 59.1,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "Cu",
+        "pad_type": "FjH800",
+        "conditioner_disk_type": "3MA82AF-3lbf",
+        "pressure_psi": 2.0,
+        "polish_time": 0.6,
+        "date": "2025-11-06"
+      },
+      {
+        "file_name": "data/05_Sample_300Ox_CH052_WFT300E-WG-flat_CU4545F-300_Saesol-LPX-DP2-4-5lbf_2P_63-61V_in60s_r01.dat",
+        "wafer_num": 36,
+        "removal": 148.0,
+        "nu": 22.2,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "Ox",
+        "pad_type": "CH052",
+        "conditioner_disk_type": "Saesol-LPX-DP2-4-5lbf",
+        "pressure_psi": 2.0,
+        "polish_time": 0.6,
+        "date": "2025-10-28"
+      },
+      {
+        "file_name": "data/05_Sample_300Ox_CH059_WFT300E-WG-flat_CU4545F-300_Saesol-LPX-DP2-4-5lbf_2P_63-61V_in60s_r01.dat",
+        "wafer_num": 37,
+        "removal": 77.0,
+        "nu": 22.9,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "Ox",
+        "pad_type": "CH059",
+        "conditioner_disk_type": "Saesol-LPX-DP2-4-5lbf",
+        "pressure_psi": 2.0,
+        "polish_time": 0.6,
+        "date": "2025-11-03"
+      },
+      {
+        "file_name": "data/05_Sample_300Ox_FjH800_WFT300E-WG-flat_CU4545F-300_3MA82AF-3lbf_2-5P_84-81V_in60s_r01.dat",
+        "wafer_num": 38,
+        "removal": 1051.0,
+        "nu": 7.9,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "Ox",
+        "pad_type": "FjH800",
+        "conditioner_disk_type": "3MA82AF-3lbf",
+        "pressure_psi": 2.5,
+        "polish_time": 0.6,
+        "date": "2025-11-11"
+      },
+      {
+        "file_name": "data/05_Sample_300TaN_CH052_WFT300E-WG-flat_CU4545F-300_Saesol-LPX-DP2-4-5lbf_2P_63-61V_in60s_r01.dat",
+        "wafer_num": 39,
+        "removal": 329.0,
+        "nu": 18.0,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "TaN",
+        "pad_type": "CH052",
+        "conditioner_disk_type": "Saesol-LPX-DP2-4-5lbf",
+        "pressure_psi": 2.0,
+        "polish_time": 0.6,
+        "date": "2025-10-30"
+      },
+      {
+        "file_name": "data/05_Sample_300TaN_FjH800_WFT300E-WG-flat_CU4545F-300_3MA82AF-3lbf_2-5P_63-61V_in60s_r01.dat",
+        "wafer_num": 40,
+        "removal": 1037.0,
+        "nu": 12.2,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "TaN",
+        "pad_type": "FjH800",
+        "conditioner_disk_type": "3MA82AF-3lbf",
+        "pressure_psi": 2.5,
+        "polish_time": 0.6,
+        "date": "2025-11-10"
+      },
+      {
+        "file_name": "data/06_Sample_300Cu_CH052_WFT300E-WG-flat_CU4545F-300_Saesol-LPX-DP2-4-5lbf_2P_84-81V_in60s_r01.dat",
+        "wafer_num": 41,
+        "removal": 149.0,
+        "nu": 102.7,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "Cu",
+        "pad_type": "CH052",
+        "conditioner_disk_type": "Saesol-LPX-DP2-4-5lbf",
+        "pressure_psi": 2.0,
+        "polish_time": 0.6,
+        "date": "2025-10-29"
+      },
+      {
+        "file_name": "data/06_Sample_300Cu_FjH800_WFT300E-WG-flat_CU4545F-300_3MA82AF-3lbf_2P_63-61V_in60s_r01.dat",
+        "wafer_num": 43,
+        "removal": 297.0,
+        "nu": 47.5,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "Cu",
+        "pad_type": "FjH800",
+        "conditioner_disk_type": "3MA82AF-3lbf",
+        "pressure_psi": 2.0,
+        "polish_time": 0.6,
+        "date": "2025-11-06"
+      },
+      {
+        "file_name": "data/06_Sample_300Ox_CH052_WFT300E-WG-flat_CU4545F-300_Saesol-LPX-DP2-4-5lbf_2P_84-81V_in60s_r01.dat",
+        "wafer_num": 44,
+        "removal": 169.0,
+        "nu": 22.9,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "Ox",
+        "pad_type": "CH052",
+        "conditioner_disk_type": "Saesol-LPX-DP2-4-5lbf",
+        "pressure_psi": 2.0,
+        "polish_time": 0.6,
+        "date": "2025-10-28"
+      },
+      {
+        "file_name": "data/06_Sample_300Ox_CH059_WFT300E-WG-flat_CU4545F-300_Saesol-LPX-DP2-4-5lbf_2P_84-81V_in60s_r01.dat",
+        "wafer_num": 45,
+        "removal": 115.0,
+        "nu": 17.0,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "Ox",
+        "pad_type": "CH059",
+        "conditioner_disk_type": "Saesol-LPX-DP2-4-5lbf",
+        "pressure_psi": 2.0,
+        "polish_time": 0.6,
+        "date": "2025-11-03"
+      },
+      {
+        "file_name": "data/06_Sample_300TaN_CH052_WFT300E-WG-flat_CU4545F-300_Saesol-LPX-DP2-4-5lbf_2P_84-81V_in60s_r01.dat",
+        "wafer_num": 47,
+        "removal": 313.0,
+        "nu": 17.4,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "TaN",
+        "pad_type": "CH052",
+        "conditioner_disk_type": "Saesol-LPX-DP2-4-5lbf",
+        "pressure_psi": 2.0,
+        "polish_time": 0.6,
+        "date": "2025-10-30"
+      },
+      {
+        "file_name": "data/06_Sample_300TaN_FjH800_WFT300E-WG-flat_CU4545F-300_3MA82AF-3lbf_2-5P_84-81V_in60s_r01.dat",
+        "wafer_num": 48,
+        "removal": 1309.0,
+        "nu": 10.4,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "TaN",
+        "pad_type": "FjH800",
+        "conditioner_disk_type": "3MA82AF-3lbf",
+        "pressure_psi": 2.5,
+        "polish_time": 0.6,
+        "date": "2025-11-10"
+      },
+      {
+        "file_name": "data/07_Sample_300Cu_CH052_WFT300E-WG-flat_CU4545F-300_Saesol-LPX-DP2-4-5lbf_2-5P_42-39V_in60s_r01.dat",
+        "wafer_num": 49,
+        "removal": 157.0,
+        "nu": 86.7,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "Cu",
+        "pad_type": "CH052",
+        "conditioner_disk_type": "Saesol-LPX-DP2-4-5lbf",
+        "pressure_psi": 2.5,
+        "polish_time": 0.6,
+        "date": "2025-10-29"
+      },
+      {
+        "file_name": "data/07_Sample_300Cu_FjH800_WFT300E-WG-flat_CU4545F-300_3MA82AF-3lbf_2P_84-81V_in60s_r01.dat",
+        "wafer_num": 50,
+        "removal": 430.0,
+        "nu": 35.4,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "Cu",
+        "pad_type": "FjH800",
+        "conditioner_disk_type": "3MA82AF-3lbf",
+        "pressure_psi": 2.0,
+        "polish_time": 0.6,
+        "date": "2025-11-06"
+      },
+      {
+        "file_name": "data/07_Sample_300Ox_CH052_WFT300E-WG-flat_CU4545F-300_Saesol-LPX-DP2-4-5lbf_2-5P_42-39V_in60s_r01.dat",
+        "wafer_num": 51,
+        "removal": 194.0,
+        "nu": 19.5,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "Ox",
+        "pad_type": "CH052",
+        "conditioner_disk_type": "Saesol-LPX-DP2-4-5lbf",
+        "pressure_psi": 2.5,
+        "polish_time": 0.6,
+        "date": "2025-10-28"
+      },
+      {
+        "file_name": "data/07_Sample_300Ox_CH059_WFT300E-WG-flat_CU4545F-300_Saesol-LPX-DP2-4-5lbf_2-5P_42-39V_in60s_r01.dat",
+        "wafer_num": 52,
+        "removal": 59.0,
+        "nu": 23.9,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "Ox",
+        "pad_type": "CH059",
+        "conditioner_disk_type": "Saesol-LPX-DP2-4-5lbf",
+        "pressure_psi": 2.5,
+        "polish_time": 0.6,
+        "date": "2025-11-03"
+      },
+      {
+        "file_name": "data/07_Sample_300TaN_CH052_WFT300E-WG-flat_CU4545F-300_Saesol-LPX-DP2-4-5lbf_2-5P_42-39V_in60s_r01.dat",
+        "wafer_num": 53,
+        "removal": 352.0,
+        "nu": 19.3,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "TaN",
+        "pad_type": "CH052",
+        "conditioner_disk_type": "Saesol-LPX-DP2-4-5lbf",
+        "pressure_psi": 2.5,
+        "polish_time": 0.6,
+        "date": "2025-10-30"
+      },
+      {
+        "file_name": "data/07_Sample_300TaN_CH059_WFT300E-WG-flat_CU4545F-300_Saesol-LPX-DP2-4-5lbf_1-5P_42-39V_in60s_r01.dat",
+        "wafer_num": 54,
+        "removal": 200.0,
+        "nu": 29.2,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "TaN",
+        "pad_type": "CH059",
+        "conditioner_disk_type": "Saesol-LPX-DP2-4-5lbf",
+        "pressure_psi": 1.5,
+        "polish_time": 0.6,
+        "date": "2025-11-04"
+      },
+      {
+        "file_name": "data/08_Sample_300Cu_CH052_WFT300E-WG-flat_CU4545F-300_Saesol-LPX-DP2-4-5lbf_2-5P_63-61V_in60s_r01.dat",
+        "wafer_num": 56,
+        "removal": 217.0,
+        "nu": 67.8,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "Cu",
+        "pad_type": "CH052",
+        "conditioner_disk_type": "Saesol-LPX-DP2-4-5lbf",
+        "pressure_psi": 2.5,
+        "polish_time": 0.6,
+        "date": "2025-10-29"
+      },
+      {
+        "file_name": "data/08_Sample_300Cu_FjH800_WFT300E-WG-flat_CU4545F-300_3MA82AF-3lbf_2-5P_42-39V_in60s_r01.dat",
+        "wafer_num": 57,
+        "removal": 251.0,
+        "nu": 53.9,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "Cu",
+        "pad_type": "FjH800",
+        "conditioner_disk_type": "3MA82AF-3lbf",
+        "pressure_psi": 2.5,
+        "polish_time": 0.6,
+        "date": "2025-11-06"
+      },
+      {
+        "file_name": "data/08_Sample_300Ox_CH052_WFT300E-WG-flat_CU4545F-300_Saesol-LPX-DP2-4-5lbf_2-5P_63-61V_in60s_r01.dat",
+        "wafer_num": 58,
+        "removal": 198.0,
+        "nu": 22.3,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "Ox",
+        "pad_type": "CH052",
+        "conditioner_disk_type": "Saesol-LPX-DP2-4-5lbf",
+        "pressure_psi": 2.5,
+        "polish_time": 0.6,
+        "date": "2025-10-28"
+      },
+      {
+        "file_name": "data/08_Sample_300Ox_CH059_WFT300E-WG-flat_CU4545F-300_Saesol-LPX-DP2-4-5lbf_2-5P_63-61V_in60s_r01.dat",
+        "wafer_num": 59,
+        "removal": 106.0,
+        "nu": 19.8,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "Ox",
+        "pad_type": "CH059",
+        "conditioner_disk_type": "Saesol-LPX-DP2-4-5lbf",
+        "pressure_psi": 2.5,
+        "polish_time": 0.6,
+        "date": "2025-11-03"
+      },
+      {
+        "file_name": "data/08_Sample_300Ox_FjH800_WFT300E-WG-flat_CU4545F-300_3MA82AF-3lbf_1-5P_42-39V_in60s_r01.dat",
+        "wafer_num": 60,
+        "removal": 457.0,
+        "nu": 15.2,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "Ox",
+        "pad_type": "FjH800",
+        "conditioner_disk_type": "3MA82AF-3lbf",
+        "pressure_psi": 1.5,
+        "polish_time": 0.6,
+        "date": "2025-11-10"
+      },
+      {
+        "file_name": "data/08_Sample_300TaN_CH052_WFT300E-WG-flat_CU4545F-300_Saesol-LPX-DP2-4-5lbf_2-5P_63-61V_in60s_r01.dat",
+        "wafer_num": 61,
+        "removal": 468.0,
+        "nu": 16.3,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "TaN",
+        "pad_type": "CH052",
+        "conditioner_disk_type": "Saesol-LPX-DP2-4-5lbf",
+        "pressure_psi": 2.5,
+        "polish_time": 0.6,
+        "date": "2025-10-30"
+      },
+      {
+        "file_name": "data/08_Sample_300TaN_CH059_WFT300E-WG-flat_CU4545F-300_Saesol-LPX-DP2-4-5lbf_1-5P_63-61V_in60s_r01.dat",
+        "wafer_num": 62,
+        "removal": 247.0,
+        "nu": 24.0,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "TaN",
+        "pad_type": "CH059",
+        "conditioner_disk_type": "Saesol-LPX-DP2-4-5lbf",
+        "pressure_psi": 1.5,
+        "polish_time": 0.6,
+        "date": "2025-11-04"
+      },
+      {
+        "file_name": "data/09_Sample_300Cu_CH052_WFT300E-WG-flat_CU4545F-300_Saesol-LPX-DP2-4-5lbf_2-5P_84-81V_in60s_r01.dat",
+        "wafer_num": 63,
+        "removal": 138.0,
+        "nu": 84.2,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "Cu",
+        "pad_type": "CH052",
+        "conditioner_disk_type": "Saesol-LPX-DP2-4-5lbf",
+        "pressure_psi": 2.5,
+        "polish_time": 0.6,
+        "date": "2025-10-29"
+      },
+      {
+        "file_name": "data/09_Sample_300Cu_FjH800_WFT300E-WG-flat_CU4545F-300_3MA82AF-3lbf_2-5P_63-61V_in60s_r01.dat",
+        "wafer_num": 64,
+        "removal": 409.0,
+        "nu": 43.5,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          },
+          "1": {
+            "y_min": 136.26275362,
+            "y_max": 308.45736697999996
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "Cu",
+        "pad_type": "FjH800",
+        "conditioner_disk_type": "3MA82AF-3lbf",
+        "pressure_psi": 2.5,
+        "polish_time": 0.6,
+        "date": "2025-11-06"
+      },
+      {
+        "file_name": "data/09_Sample_300Ox_CH052_WFT300E-WG-flat_CU4545F-300_Saesol-LPX-DP2-4-5lbf_2-5P_84-81V_in60s_r01.dat",
+        "wafer_num": 65,
+        "removal": 223.0,
+        "nu": 24.7,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "Ox",
+        "pad_type": "CH052",
+        "conditioner_disk_type": "Saesol-LPX-DP2-4-5lbf",
+        "pressure_psi": 2.5,
+        "polish_time": 0.6,
+        "date": "2025-10-28"
+      },
+      {
+        "file_name": "data/09_Sample_300Ox_CH059_WFT300E-WG-flat_CU4545F-300_Saesol-LPX-DP2-4-5lbf_2-5P_84-81V_in60s_r01.dat",
+        "wafer_num": 66,
+        "removal": 149.0,
+        "nu": 18.5,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "Ox",
+        "pad_type": "CH059",
+        "conditioner_disk_type": "Saesol-LPX-DP2-4-5lbf",
+        "pressure_psi": 2.5,
+        "polish_time": 0.6,
+        "date": "2025-11-03"
+      },
+      {
+        "file_name": "data/09_Sample_300Ox_FjH800_WFT300E-WG-flat_CU4545F-300_3MA82AF-3lbf_1-5P_63-61V_in60s_r01.dat",
+        "wafer_num": 67,
+        "removal": 604.0,
+        "nu": 14.8,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "Ox",
+        "pad_type": "FjH800",
+        "conditioner_disk_type": "3MA82AF-3lbf",
+        "pressure_psi": 1.5,
+        "polish_time": 0.6,
+        "date": "2025-11-10"
+      },
+      {
+        "file_name": "data/09_Sample_300TaN_CH052_WFT300E-WG-flat_CU4545F-300_Saesol-LPX-DP2-4-5lbf_2-5P_84-81V_in60s_r01.dat",
+        "wafer_num": 68,
+        "removal": 533.0,
+        "nu": 16.2,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "TaN",
+        "pad_type": "CH052",
+        "conditioner_disk_type": "Saesol-LPX-DP2-4-5lbf",
+        "pressure_psi": 2.5,
+        "polish_time": 0.6,
+        "date": "2025-10-30"
+      },
+      {
+        "file_name": "data/09_Sample_300TaN_CH059_WFT300E-WG-flat_CU4545F-300_Saesol-LPX-DP2-4-5lbf_1-5P_84-81V_in60s_r01.dat",
+        "wafer_num": 69,
+        "removal": 280.0,
+        "nu": 22.7,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          },
+          "1": {
+            "y_min": 27.936528740000007,
+            "y_max": 201.42376266
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "TaN",
+        "pad_type": "CH059",
+        "conditioner_disk_type": "Saesol-LPX-DP2-4-5lbf",
+        "pressure_psi": 1.5,
+        "polish_time": 0.6,
+        "date": "2025-11-04"
+      },
+      {
+        "file_name": "data/10_Sample_300Cu_FjH800_WFT300E-WG-flat_CU4545F-300_3MA82AF-3lbf_2-5P_84-81V_in60s_r01.dat",
+        "wafer_num": 71,
+        "removal": 517.0,
+        "nu": 33.9,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "Cu",
+        "pad_type": "FjH800",
+        "conditioner_disk_type": "3MA82AF-3lbf",
+        "pressure_psi": 2.5,
+        "polish_time": 0.6,
+        "date": "2025-11-06"
+      },
+      {
+        "file_name": "data/10_Sample_300Ox_FjH800_WFT300E-WG-flat_CU4545F-300_3MA82AF-3lbf_1-5P_84-81V_in60s_r01.dat",
+        "wafer_num": 74,
+        "removal": 688.0,
+        "nu": 14.0,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "Ox",
+        "pad_type": "FjH800",
+        "conditioner_disk_type": "3MA82AF-3lbf",
+        "pressure_psi": 1.5,
+        "polish_time": 0.6,
+        "date": "2025-11-10"
+      },
+      {
+        "file_name": "data/10_Sample_300TaN_CH059_WFT300E-WG-flat_CU4545F-300_Saesol-LPX-DP2-4-5lbf_2P_42-39V_in60s_r01.dat",
+        "wafer_num": 76,
+        "removal": 230.0,
+        "nu": 23.2,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "TaN",
+        "pad_type": "CH059",
+        "conditioner_disk_type": "Saesol-LPX-DP2-4-5lbf",
+        "pressure_psi": 2.0,
+        "polish_time": 0.6,
+        "date": "2025-11-04"
+      },
+      {
+        "file_name": "data/11_Sample_300Cu_CH052_WFT300E-WG-flat_CU4545F-300_Saesol-LPX-DP2-4-5lbf_1-5P_42-39V_in60s_r01.dat",
+        "wafer_num": 77,
+        "removal": 81.0,
+        "nu": 221.4,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "Cu",
+        "pad_type": "CH052",
+        "conditioner_disk_type": "Saesol-LPX-DP2-4-5lbf",
+        "pressure_psi": 1.5,
+        "polish_time": 0.6,
+        "date": "2025-10-28"
+      },
+      {
+        "file_name": "data/11_Sample_300Ox_FjH800_WFT300E-WG-flat_CU4545F-300_3MA82AF-3lbf_2P_42-39V_in60s_r01.dat",
+        "wafer_num": 80,
+        "removal": 601.0,
+        "nu": 11.2,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "Ox",
+        "pad_type": "FjH800",
+        "conditioner_disk_type": "3MA82AF-3lbf",
+        "pressure_psi": 2.0,
+        "polish_time": 0.6,
+        "date": "2025-11-10"
+      },
+      {
+        "file_name": "data/11_Sample_300TaN_CH059_WFT300E-WG-flat_CU4545F-300_Saesol-LPX-DP2-4-5lbf_2P_63-61V_in60s_r01.dat",
+        "wafer_num": 81,
+        "removal": 342.0,
+        "nu": 20.0,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "TaN",
+        "pad_type": "CH059",
+        "conditioner_disk_type": "Saesol-LPX-DP2-4-5lbf",
+        "pressure_psi": 2.0,
+        "polish_time": 0.6,
+        "date": "2025-11-04"
+      },
+      {
+        "file_name": "data/12_Sample_300Cu_CH052_WFT300E-WG-flat_CU4545F-300_Saesol-LPX-DP2-4-5lbf_1-5P_63-61V_in60s_r01.dat",
+        "wafer_num": 82,
+        "removal": 103.0,
+        "nu": 186.8,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "Cu",
+        "pad_type": "CH052",
+        "conditioner_disk_type": "Saesol-LPX-DP2-4-5lbf",
+        "pressure_psi": 1.5,
+        "polish_time": 0.6,
+        "date": "2025-10-28"
+      },
+      {
+        "file_name": "data/12_Sample_300TaN_CH059_WFT300E-WG-flat_CU4545F-300_Saesol-LPX-DP2-4-5lbf_2P_84-81V_in60s_r01.dat",
+        "wafer_num": 84,
+        "removal": 398.0,
+        "nu": 19.5,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "TaN",
+        "pad_type": "CH059",
+        "conditioner_disk_type": "Saesol-LPX-DP2-4-5lbf",
+        "pressure_psi": 2.0,
+        "polish_time": 0.6,
+        "date": "2025-11-04"
+      },
+      {
+        "file_name": "data/12_Sample_300TaN_FjH800_WFT300E-WG-flat_CU4545F-300_3MA82AF-3lbf_1-5P_42-39V_in60s_r01.dat",
+        "wafer_num": 85,
+        "removal": 568.0,
+        "nu": 16.7,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "TaN",
+        "pad_type": "FjH800",
+        "conditioner_disk_type": "3MA82AF-3lbf",
+        "pressure_psi": 1.5,
+        "polish_time": 0.6,
+        "date": "2025-11-06"
+      },
+      {
+        "file_name": "data/13_Sample_300Cu_CH052_WFT300E-WG-flat_CU4545F-300_Saesol-LPX-DP2-4-5lbf_1-5P_84-81V_in60s_r01.dat",
+        "wafer_num": 86,
+        "removal": 92.0,
+        "nu": 192.3,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "Cu",
+        "pad_type": "CH052",
+        "conditioner_disk_type": "Saesol-LPX-DP2-4-5lbf",
+        "pressure_psi": 1.5,
+        "polish_time": 0.6,
+        "date": "2025-10-28"
+      },
+      {
+        "file_name": "data/13_Sample_300TaN_CH059_WFT300E-WG-flat_CU4545F-300_Saesol-LPX-DP2-4-5lbf_2-5P_42-39V_in60s_r01.dat",
+        "wafer_num": 88,
+        "removal": 297.0,
+        "nu": 18.4,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "TaN",
+        "pad_type": "CH059",
+        "conditioner_disk_type": "Saesol-LPX-DP2-4-5lbf",
+        "pressure_psi": 2.5,
+        "polish_time": 0.6,
+        "date": "2025-11-04"
+      },
+      {
+        "file_name": "data/13_Sample_300TaN_FjH800_WFT300E-WG-flat_CU4545F-300_3MA82AF-3lbf_1-5P_63-61V_in60s_r01.dat",
+        "wafer_num": 89,
+        "removal": 752.0,
+        "nu": 10.9,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "TaN",
+        "pad_type": "FjH800",
+        "conditioner_disk_type": "3MA82AF-3lbf",
+        "pressure_psi": 1.5,
+        "polish_time": 0.6,
+        "date": "2025-11-06"
+      },
+      {
+        "file_name": "data/14_Sample_300TaN_CH059_WFT300E-WG-flat_CU4545F-300_Saesol-LPX-DP2-4-5lbf_2-5P_63-61V_in60s_r01.dat",
+        "wafer_num": 91,
+        "removal": 412.0,
+        "nu": 16.8,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "TaN",
+        "pad_type": "CH059",
+        "conditioner_disk_type": "Saesol-LPX-DP2-4-5lbf",
+        "pressure_psi": 2.5,
+        "polish_time": 0.6,
+        "date": "2025-11-04"
+      },
+      {
+        "file_name": "data/14_Sample_300TaN_FjH800_WFT300E-WG-flat_CU4545F-300_3MA82AF-3lbf_1-5P_84-81V_in60s_r01.dat",
+        "wafer_num": 92,
+        "removal": 887.0,
+        "nu": 12.5,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "TaN",
+        "pad_type": "FjH800",
+        "conditioner_disk_type": "3MA82AF-3lbf",
+        "pressure_psi": 1.5,
+        "polish_time": 0.6,
+        "date": "2025-11-06"
+      },
+      {
+        "file_name": "data/15_Sample_300TaN_CH059_WFT300E-WG-flat_CU4545F-300_Saesol-LPX-DP2-4-5lbf_2-5P_84-81V_in60s_r01.dat",
+        "wafer_num": 93,
+        "removal": 548.0,
+        "nu": 16.6,
+        "notes": "",
+        "wafer_diameter": 0.3,
+        "pound_force": 4.44822,
+        "pad_to_wafer": 0.225,
+        "interval": [
+          7,
+          57
+        ],
+        "graph_settings": {
+          "0": {
+            "y_min": 0.0,
+            "y_max": 1.0
+          }
+        },
+        "slurry_type": "CU4545F-300",
+        "wafer_type": "TaN",
+        "pad_type": "CH059",
+        "conditioner_disk_type": "Saesol-LPX-DP2-4-5lbf",
+        "pressure_psi": 2.5,
+        "polish_time": 0.6,
+        "date": "2025-11-04"
+      }
+    ]
+  },
+  "ui_state": {
+    "selected_file_index": 0,
+    "tab_index": 0,
+    "graph_index": 0
+  }
+}

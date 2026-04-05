@@ -4,7 +4,99 @@
 from dash import dcc, html
 from desktop.theme import COLORS
 from dashboard.plotly_theme import INPUT_STYLE, DROPDOWN_STYLE_WIDE, DROPDOWN_STYLE_MEDIUM
-from dashboard.constants import FEATURE_AXIS_OPTIONS, ANALYSIS_FEATURES, SCATTER_FEATURE_OPTIONS
+from dashboard.constants import (
+    FEATURE_AXIS_OPTIONS,
+    ANALYSIS_FEATURES,
+    SCATTER_FEATURE_OPTIONS,
+    PREDICTION_CATEGORICAL_FEATURES,
+    PREDICTION_NUMERICAL_FEATURES,
+)
+
+
+# Feature display metadata. Falls back to the column name when no entry exists,
+# so adding a new prediction feature to PREDICTION_*_FEATURES only needs an
+# override here if the column name itself isn't a user-friendly label.
+_PREDICTION_FEATURE_LABELS = {
+    'Pressure PSI': 'Pressure (PSI)',
+    'Polish Time': 'Polish Time (min)',
+}
+_PREDICTION_FEATURE_PLACEHOLDERS = {
+    'Pressure PSI': 'e.g. 1.5',
+    'Polish Time': 'e.g. 1',
+}
+
+
+def _feature_id_suffix(feature: str) -> str:
+    """Derive a kebab-case ID suffix from a feature name.
+
+    'Wafer' → 'wafer', 'Pressure PSI' → 'pressure', 'Polish Time' → 'polish-time'.
+    Matches the existing pred-* IDs so build_prediction_form() is backwards
+    compatible with the Predict Removal tab's callbacks.
+    """
+    return feature.replace(' PSI', '').lower().replace(' ', '-')
+
+
+def build_prediction_form(id_prefix: str):
+    """Build the inner elements of a prediction form.
+
+    Generates one dropdown per PREDICTION_CATEGORICAL_FEATURES entry and one
+    numeric input per PREDICTION_NUMERICAL_FEATURES entry, followed by a
+    Predict button and result box. Dropdown options are set at runtime by
+    callbacks; this helper only produces the static skeleton.
+
+    Args:
+        id_prefix: prefix for every component id (e.g. 'pred-' for the main
+            tab, 'agent-pred-' for the agent canvas).
+
+    Returns:
+        A list of Dash components ready to drop into a container.
+    """
+    cat_children = []
+    for feat in PREDICTION_CATEGORICAL_FEATURES:
+        suffix = _feature_id_suffix(feat)
+        label = _PREDICTION_FEATURE_LABELS.get(feat, feat)
+        cat_children.append(
+            html.Div(className='inline-control', children=[
+                html.Label(label, className='inline-label'),
+                dcc.Dropdown(
+                    id=f'{id_prefix}{suffix}',
+                    placeholder="Select...",
+                    clearable=False,
+                    style={'width': '160px'},
+                ),
+            ])
+        )
+
+    num_children = []
+    for feat in PREDICTION_NUMERICAL_FEATURES:
+        suffix = _feature_id_suffix(feat)
+        label = _PREDICTION_FEATURE_LABELS.get(feat, feat)
+        placeholder = _PREDICTION_FEATURE_PLACEHOLDERS.get(feat, '')
+        num_children.append(
+            html.Div(className='inline-control', children=[
+                html.Label(label, className='inline-label'),
+                dcc.Input(
+                    id=f'{id_prefix}{suffix}',
+                    type='number',
+                    placeholder=placeholder,
+                    style={**INPUT_STYLE, 'width': '100px'},
+                ),
+            ])
+        )
+    num_children.append(
+        html.Div(style={'display': 'flex', 'alignItems': 'flex-end'}, children=[
+            html.Button("Predict", id=f'{id_prefix}predict-btn', n_clicks=0,
+                        className='pred-btn'),
+        ])
+    )
+
+    return [
+        html.Div(className='control-toolbar', children=cat_children),
+        html.Div(className='control-toolbar', children=num_children),
+        html.Div(id=f'{id_prefix}result', className='pred-result-box',
+                 children=html.P("Train a model, then enter a configuration above.",
+                                 style={'color': '#707070', 'fontSize': '13px'})),
+    ]
 
 
 def _graph_config(graph_id, extra_buttons=None, double_click=None):
@@ -447,6 +539,87 @@ def build_correlations_tab():
     ])
 
 
+def build_prediction_tab():
+    """Build the 'Predict Removal' tab layout."""
+    return dcc.Tab(label='Predict Removal', value='prediction', className='tab', selected_className='tab--selected', children=[
+        html.Div([
+            # Control Panel — model selection + train button
+            html.Div(className='control-panel', children=[
+                html.Div(className='control-panel-row', children=[
+                    html.Div(className='control-group', children=[
+                        html.Label("Model", className='control-label'),
+                        dcc.RadioItems(
+                            id='pred-model-select',
+                            options=[
+                                {'label': ' Ridge Regression', 'value': 'ridge'},
+                                {'label': ' Random Forest', 'value': 'rf'},
+                            ],
+                            value='ridge',
+                            inline=True,
+                            className='checklist-container',
+                            inputStyle={'marginRight': '4px'},
+                            labelStyle={'marginRight': '24px', 'fontSize': '13px',
+                                        'color': '#888888', 'cursor': 'pointer'},
+                        ),
+                    ]),
+                    html.Div(style={'display': 'flex', 'alignItems': 'flex-end'}, children=[
+                        html.Button("Train Model", id='pred-train-btn', n_clicks=0,
+                                    className='pred-btn'),
+                    ]),
+                ]),
+
+                # Metric badges
+                html.Div(className='pred-metrics', style={'marginTop': '12px'}, children=[
+                    html.Span(id='pred-n-files', className='variance-badge',
+                              children='0 files'),
+                    html.Span(id='pred-r2', className='variance-badge',
+                              title='How well the model explains variation in Removal. 1.0 = perfect, 0.0 = no better than guessing the average.\nR\u00b2 = 1 \u2212 \u03a3(y\u1d62 \u2212 \u0177\u1d62)\u00b2 / \u03a3(y\u1d62 \u2212 \u0233)\u00b2',
+                              children='R\u00b2 = --'),
+                    html.Span(id='pred-rmse', className='variance-badge',
+                              title='Root Mean Squared Error \u2014 average prediction error in Angstroms. Penalizes large misses more heavily. Lower is better.\nRMSE = \u221a(\u03a3(y\u1d62 \u2212 \u0177\u1d62)\u00b2 / n)',
+                              children='RMSE = --'),
+                    html.Span(id='pred-mae', className='variance-badge',
+                              title='Mean Absolute Error \u2014 average prediction error in Angstroms. Lower is better.\nMAE = \u03a3|y\u1d62 \u2212 \u0177\u1d62| / n',
+                              children='MAE = --'),
+                ]),
+                html.Div(id='pred-warning', style={'display': 'none'}),
+            ]),
+
+            # Prediction Input Card (hidden until model is trained)
+            html.Div(id='pred-input-container', className='graph-card', style={'display': 'none'}, children=[
+                html.Div(className='card-header', children=[
+                    html.H4("Predict New Configuration", className='card-title'),
+                    html.P("Select materials and process parameters to predict removal",
+                           className='card-subtitle'),
+                ]),
+                *build_prediction_form(id_prefix='pred-'),
+            ]),
+
+            # Diagnostics 2x2 Grid (hidden until model is trained)
+            html.Div(id='pred-diagnostics-container', className='prediction-grid', style={'display': 'none'}, children=[
+                html.Div(className='graph-card', children=[
+                    dcc.Graph(id='pred-vs-actual', config=_graph_config('pred-vs-actual'),
+                              style={'height': '380px', 'width': '100%'}),
+                ]),
+                html.Div(className='graph-card', children=[
+                    dcc.Graph(id='pred-importance', config=_graph_config('pred-importance'),
+                              style={'height': '380px', 'width': '100%'}),
+                ]),
+                html.Div(className='graph-card', children=[
+                    dcc.Graph(id='pred-residual', config=_graph_config('pred-residual'),
+                              style={'height': '380px', 'width': '100%'}),
+                ]),
+                html.Div(className='graph-card', children=[
+                    dcc.Graph(id='pred-residual-hist',
+                              config=_graph_config('pred-residual-hist'),
+                              style={'height': '380px', 'width': '100%'}),
+                ]),
+            ]),
+
+        ], style={'padding': '0'})
+    ])
+
+
 def build_agent_tab():
     """Build the 'AI Agent' tab layout with a chat column and a canvas column."""
     return dcc.Tab(label='AI Agent', value='agent', className='tab', selected_className='tab--selected', children=[
@@ -496,30 +669,53 @@ def build_agent_tab():
                 ]),
             ]),
 
-            # ── Right: Canvas column ──────────────────────────────────
+            # ── Right: Canvas column (split side-by-side) ─────────────
+            # Left half: always-visible prediction form (dropdowns bound to
+            # training categories). Right half: agent-generated charts.
             html.Div(className='agent-canvas-column', children=[
-                html.Div(className='agent-canvas-header', children=[
-                    html.Span("Canvas"),
-                    html.Span(id='agent-canvas-counter', children="0 / 0"),
-                ]),
-                html.Div(className='agent-canvas-body', children=[
+
+                # Form section (left 50% of canvas)
+                html.Div(className='agent-canvas-form-section', children=[
+                    html.Div(className='agent-canvas-header', children=[
+                        html.Span("Predict Removal"),
+                    ]),
                     html.Div(
-                        "Charts generated by the AI will appear here.",
-                        id='agent-canvas-empty',
+                        "Train a model first — ask the agent to \"Build a prediction model\".",
+                        id='agent-pred-empty',
                         className='agent-canvas-empty',
                     ),
-                    dcc.Graph(
-                        id='agent-canvas-graph',
-                        config={'displayModeBar': True, 'displaylogo': False, 'responsive': True},
-                        style={'height': '100%', 'width': '100%', 'display': 'none'},
-                        figure={'data': [], 'layout': {}},
+                    html.Div(
+                        id='agent-pred-form',
+                        style={'display': 'none'},
+                        children=build_prediction_form(id_prefix='agent-pred-'),
                     ),
                 ]),
-                html.Div(className='agent-canvas-footer', children=[
-                    html.Button("< prev", id='agent-canvas-prev',
-                                className='agent-canvas-nav-btn', n_clicks=0, disabled=True),
-                    html.Button("next >", id='agent-canvas-next',
-                                className='agent-canvas-nav-btn', n_clicks=0, disabled=True),
+
+                # Charts section (right 50% of canvas)
+                html.Div(className='agent-canvas-charts-section', children=[
+                    html.Div(className='agent-canvas-header', children=[
+                        html.Span("Charts"),
+                        html.Span(id='agent-canvas-counter', children="0 / 0"),
+                    ]),
+                    html.Div(className='agent-canvas-body', children=[
+                        html.Div(
+                            "Charts generated by the AI will appear here.",
+                            id='agent-canvas-empty',
+                            className='agent-canvas-empty',
+                        ),
+                        dcc.Graph(
+                            id='agent-canvas-graph',
+                            config={'displayModeBar': True, 'displaylogo': False, 'responsive': True},
+                            style={'height': '100%', 'width': '100%', 'display': 'none'},
+                            figure={'data': [], 'layout': {}},
+                        ),
+                    ]),
+                    html.Div(className='agent-canvas-footer', children=[
+                        html.Button("< prev", id='agent-canvas-prev',
+                                    className='agent-canvas-nav-btn', n_clicks=0, disabled=True),
+                        html.Button("next >", id='agent-canvas-next',
+                                    className='agent-canvas-nav-btn', n_clicks=0, disabled=True),
+                    ]),
                 ]),
             ]),
 
@@ -529,6 +725,8 @@ def build_agent_tab():
             dcc.Store(id='agent-processing', data=False),
             dcc.Store(id='agent-chart-history', data=[]),
             dcc.Store(id='agent-chart-index', data=-1),
+            dcc.Store(id='agent-automl-trained', data=False),
+            dcc.Store(id='agent-pred-prefill', data=None),
             dcc.Interval(id='agent-poll-interval', interval=200, disabled=True),
         ])
     ])
@@ -541,8 +739,10 @@ def build_app_layout():
             build_single_file_tab(),
             build_multi_file_tab(),
             build_correlations_tab(),
+            build_prediction_tab(),
             build_agent_tab(),
         ]),
+        dcc.Store(id='pred-model-store'),
         dcc.Store(id='ts-dblclick-trigger', data=0),
         dcc.Store(id='sf-dblclick-trigger', data=0),
         html.Div(id='ts-graph-listener', style={'display': 'none'}),
