@@ -9,7 +9,7 @@ import logging
 from queue import Empty
 
 import plotly
-from dash import ALL, Input, Output, State, callback_context, html, no_update
+from dash import ALL, Input, Output, State, callback_context, dcc, html, no_update
 
 from ai.agent import AgentEngine, StreamChunk
 from dashboard.constants import (
@@ -21,6 +21,86 @@ from dashboard.constants import (
 def _feature_id(feature: str) -> str:
     """Mirror of dashboard.layouts._feature_id_suffix for agent-pred-* IDs."""
     return 'agent-pred-' + feature.replace(' PSI', '').lower().replace(' ', '-')
+
+
+def _props(c) -> dict:
+    """Return the props dict whether ``c`` is a Dash component or a serialized
+    dict from callback State. Within one callback invocation, `children` is a
+    mix of both: existing entries arrived as dicts via State, freshly appended
+    entries are still Dash component objects until Dash serializes them on
+    return. Checkers that do `isinstance(c, dict)` and skip otherwise will
+    miss the fresh ones (causes e.g. the tool-indicator 'running' pill not to
+    flip to 'done' when tool_start and tool_end land on the same poll tick).
+    """
+    if hasattr(c, 'to_plotly_json'):
+        return c.to_plotly_json().get('props', {}) or {}
+    if isinstance(c, dict):
+        return c.get('props', {}) or {}
+    return {}
+
+
+_TOOL_LABELS = {
+    'run_automl': 'Training prediction model',
+    'get_dataset_summary': 'Reading dataset summary',
+    'get_file_details': 'Loading file details',
+    'get_feature_statistics': 'Computing statistics',
+    'detect_outliers': 'Detecting outliers',
+    'open_prediction_form': 'Opening prediction form',
+    'get_model_diagnostics': 'Loading model diagnostics',
+    'generate_scatter': 'Generating scatter plot',
+    'generate_distribution': 'Generating distribution plot',
+    'generate_bar_chart': 'Generating bar chart',
+    'generate_correlation_heatmap': 'Generating correlation heatmap',
+    'generate_time_series': 'Generating time series',
+    'generate_model_plots': 'Generating diagnostic plots',
+}
+
+
+def _tool_indicator(tool_name: str, status: str):
+    """Build a chat indicator for a tool call.
+
+    status: 'running' | 'done' | 'failed'
+    """
+    label = _TOOL_LABELS.get(tool_name, tool_name.replace('_', ' ').capitalize())
+    dot = {'running': '\u25cb', 'done': '\u2713', 'failed': '\u2717'}[status]
+    text = f"{dot} {label}" + ('\u2026' if status == 'running' else '')
+    return html.Div(
+        text,
+        className=f'agent-tool-indicator {status}',
+        **{'data-tool': tool_name},
+    )
+
+
+def _find_running_tool_indicator(children, tool_name: str):
+    """Find the index of the most recent running indicator for tool_name."""
+    for i in range(len(children) - 1, -1, -1):
+        props = _props(children[i])
+        class_name = props.get('className', '') or ''
+        parts = class_name.split()
+        if 'agent-tool-indicator' in parts and 'running' in parts:
+            if props.get('data-tool') == tool_name:
+                return i
+    return None
+
+
+def _assistant_msg(text: str, *, streaming: bool = False, loading: bool = False):
+    """Build an assistant chat message as rendered Markdown.
+
+    State is encoded in className (dcc.Markdown doesn't support arbitrary
+    data-* attributes). Helpers like _is_assistant_streaming / _is_loading
+    read these classes back from the component dict.
+    """
+    classes = ['agent-message', 'assistant']
+    if streaming:
+        classes.append('streaming')
+    if loading:
+        classes.append('loading')
+    return dcc.Markdown(
+        text or '',
+        className=' '.join(classes),
+        link_target='_blank',
+        dangerously_allow_html=False,
+    )
 
 logger = logging.getLogger(__name__)
 
@@ -117,13 +197,38 @@ def register_agent_callbacks(app, data_manager, agent_engine: AgentEngine):
                 html.Div(pending_msg, className='agent-message user')
             )
 
-        # Drain the output queue
+        # Drain the output queue. We preserve the relative order of text and
+        # tool events by applying tool events to `children` immediately (they
+        # partition the stream into turn-segments), while text is accumulated
+        # into a buffer that gets appended to the trailing streaming bubble.
         text_buffer = ""
         thinking_buffer = ""
         charts = []
         prefill_payload = None
         is_done = False
         error_msg = None
+
+        def _flush_text(buf):
+            """Append buffered text to the trailing streaming bubble, or open
+            a new one if the last element is a tool indicator / chart / etc."""
+            if not buf:
+                return
+            nonlocal children
+            children = [c for c in children if not _is_loading(c)]
+            if children and _is_assistant_streaming(children[-1]):
+                prev = _extract_text(children[-1])
+                children[-1] = _assistant_msg(prev + buf, streaming=True)
+            else:
+                children.append(_assistant_msg(buf, streaming=True))
+
+        def _close_streaming():
+            """Finalize any streaming assistant bubble so the next text run
+            opens a fresh bubble."""
+            nonlocal children
+            children = [c for c in children if not _is_loading(c)]
+            if children and _is_assistant_streaming(children[-1]):
+                text = _extract_text(children[-1])
+                children[-1] = _assistant_msg(text)
 
         while True:
             try:
@@ -135,6 +240,19 @@ def register_agent_callbacks(app, data_manager, agent_engine: AgentEngine):
                 text_buffer += chunk.content
             elif chunk.type == "thinking":
                 thinking_buffer += chunk.content
+            elif chunk.type == "tool_start":
+                # Flush any pending text, close the current assistant bubble,
+                # then append a running tool indicator.
+                _flush_text(text_buffer); text_buffer = ""
+                _close_streaming()
+                children.append(_tool_indicator(chunk.content, 'running'))
+            elif chunk.type == "tool_end":
+                info = chunk.content if isinstance(chunk.content, dict) else {'name': str(chunk.content), 'success': True}
+                idx = _find_running_tool_indicator(children, info['name'])
+                if idx is not None:
+                    children[idx] = _tool_indicator(
+                        info['name'], 'done' if info.get('success') else 'failed'
+                    )
             elif chunk.type == "chart":
                 charts.append(chunk.content)
             elif chunk.type == "charts":
@@ -172,41 +290,22 @@ def register_agent_callbacks(app, data_manager, agent_engine: AgentEngine):
                     )
                 )
 
-        # Show a loading indicator while processing and no text yet
-        if not text_buffer and not is_done and not charts and not error_msg:
+        # Flush any text that arrived after the last tool event (or all of it
+        # if no tool events fired this tick).
+        _flush_text(text_buffer)
+
+        # Show a loading indicator while processing and no text yet. Skip if
+        # there's a running tool indicator — that already signals "working".
+        def _is_running_indicator(c):
+            parts = (_props(c).get('className', '') or '').split()
+            return 'agent-tool-indicator' in parts and 'running' in parts
+        has_running_tool = any(_is_running_indicator(c) for c in children)
+        if (not text_buffer and not is_done and not charts and not error_msg
+                and not has_running_tool):
             # If there's no streaming assistant message yet, add a loading one
             if not children or not _is_assistant_streaming(children[-1]):
                 if not any(_is_loading(c) for c in children):
-                    children.append(
-                        html.Div(
-                            "Thinking...",
-                            className='agent-message assistant',
-                            **{'data-loading': 'true'},
-                        )
-                    )
-
-        # Add text response
-        if text_buffer:
-            # Remove loading indicator if present
-            children = [c for c in children if not _is_loading(c)]
-
-            # Check if last child is an in-progress assistant message
-            if children and _is_assistant_streaming(children[-1]):
-                # Append to existing message
-                prev_text = _extract_text(children[-1])
-                children[-1] = html.Div(
-                    prev_text + text_buffer,
-                    className='agent-message assistant',
-                    **{'data-streaming': 'true'},
-                )
-            else:
-                children.append(
-                    html.Div(
-                        text_buffer,
-                        className='agent-message assistant',
-                        **{'data-streaming': 'true'},
-                    )
-                )
+                    children.append(_assistant_msg("Thinking...", loading=True))
 
         # Route charts to the canvas history store; reference them in chat
         history_out = no_update
@@ -233,9 +332,15 @@ def register_agent_callbacks(app, data_manager, agent_engine: AgentEngine):
                 )
             )
 
-        # Flip the trained flag whenever AutoMLManager has a fitted model; the
-        # form-reveal callback watches this store.
-        trained_out = bool(_engine.automl_manager.automl is not None)
+        # Flip the trained flag only once training has FINISHED — not just when
+        # AutoML() is instantiated. train() sets self.automl before fit() runs
+        # and populates self.metrics at the very end, so use metrics as the
+        # "ready to predict" signal to avoid a race where the form opens while
+        # FLAML is still fitting.
+        trained_out = bool(
+            _engine.automl_manager.automl is not None
+            and _engine.automl_manager.metrics is not None
+        )
         prefill_out = prefill_payload if prefill_payload is not None else no_update
 
         # Finalize
@@ -246,7 +351,7 @@ def register_agent_callbacks(app, data_manager, agent_engine: AgentEngine):
             # Mark last assistant message as done (remove streaming flag)
             if children and _is_assistant_streaming(children[-1]):
                 text = _extract_text(children[-1])
-                children[-1] = html.Div(text, className='agent-message assistant')
+                children[-1] = _assistant_msg(text)
 
             # Update model badge
             model_text = "No model"
@@ -286,16 +391,25 @@ def register_agent_callbacks(app, data_manager, agent_engine: AgentEngine):
         if tab_value != 'agent':
             return no_update, no_update, no_update, no_update
 
-        # Only greet once (when chat is empty)
-        if current_children:
-            return no_update, no_update, no_update, no_update
-
         df = data_manager.get_all_data()
         file_count = len(df)
         removal_count = int((df.get('Removal', 0) > 0).sum()) if not df.empty else 0
 
         greeting = _engine.get_greeting(file_count, removal_count)
-        children = [html.Div(greeting, className='agent-message assistant')]
+
+        # Dedup guard: if the greeting (or any assistant message containing
+        # that exact text) is already in the chat, don't re-append it. This
+        # protects against double-renders if the callback ever re-fires on
+        # the same tab activation.
+        if current_children:
+            for c in current_children:
+                if _extract_text(c) == greeting:
+                    return no_update, no_update, no_update, no_update
+            # Chat is non-empty but doesn't contain the greeting — still skip,
+            # matching prior "only greet once" behaviour.
+            return no_update, no_update, no_update, no_update
+
+        children = [_assistant_msg(greeting)]
 
         data_badge = f"{file_count} files"
 
@@ -383,6 +497,25 @@ def register_agent_callbacks(app, data_manager, agent_engine: AgentEngine):
             idx == total - 1,
         )
 
+    # == Sync trained flag on tab activation ================================
+    # When the Dash page reloads (e.g. user leaves to the Landing/Project
+    # page and comes back), the agent-automl-trained store resets to its
+    # default (False) and the form would stay hidden until the next
+    # interaction. This callback reconciles the client-side store with the
+    # engine's actual trained state every time the Agent tab becomes active,
+    # including the initial page load.
+    @app.callback(
+        Output('agent-automl-trained', 'data', allow_duplicate=True),
+        Input('analysis-tabs', 'value'),
+        prevent_initial_call='initial_duplicate',
+    )
+    def sync_trained_on_tab(tab_value):
+        if tab_value != 'agent':
+            return no_update
+        if _engine and _engine.automl_manager.metrics is not None:
+            return True
+        return no_update
+
     # == Callback 6: Reveal prediction form + populate options on train =====
     _cat_option_outputs = [
         Output(_feature_id(f), 'options') for f in PREDICTION_CATEGORICAL_FEATURES
@@ -469,6 +602,12 @@ def register_agent_callbacks(app, data_manager, agent_engine: AgentEngine):
         if _engine.automl_manager.automl is None:
             return html.P("Train a model first.",
                            style={'color': '#707070', 'fontSize': '13px'})
+        if _engine.automl_manager.metrics is None:
+            # AutoML() instantiated but fit() / nested-CV still running.
+            return html.P(
+                "Training in progress \u2014 please wait a few seconds and try again.",
+                style={'color': '#f59e0b', 'fontSize': '13px'},
+            )
 
         n_cat = len(PREDICTION_CATEGORICAL_FEATURES)
         cat_values = values[:n_cat]
@@ -545,26 +684,22 @@ def register_agent_callbacks(app, data_manager, agent_engine: AgentEngine):
 
 def _is_user_message(component, text):
     """Check if a Dash component is a user message with the given text."""
-    if not isinstance(component, dict):
-        return False
-    props = component.get('props', {})
-    return props.get('className') == 'agent-message user' and props.get('children') == text
+    props = _props(component)
+    return (props.get('className') == 'agent-message user'
+            and props.get('children') == text)
 
 
 def _is_assistant_streaming(component):
     """Check if a component is a streaming assistant message."""
-    if not isinstance(component, dict):
-        return False
-    props = component.get('props', {})
-    return (props.get('className') == 'agent-message assistant'
-            and props.get('data-streaming') == 'true')
+    class_name = _props(component).get('className', '') or ''
+    parts = class_name.split()
+    return 'assistant' in parts and 'streaming' in parts
 
 
 def _extract_text(component):
-    """Extract text content from a Dash HTML component."""
-    if isinstance(component, dict):
-        return component.get('props', {}).get('children', '')
-    return ''
+    """Extract the Markdown source (or plain text) from a chat message."""
+    children = _props(component).get('children', '')
+    return children if isinstance(children, str) else ''
 
 
 def _find_thinking_element(children):
@@ -587,7 +722,5 @@ def _find_thinking_element(children):
 
 def _is_loading(component):
     """Check if a component is a loading indicator."""
-    if not isinstance(component, dict):
-        return False
-    props = component.get('props', {})
-    return props.get('data-loading') == 'true'
+    class_name = _props(component).get('className', '') or ''
+    return 'loading' in class_name.split()

@@ -845,6 +845,38 @@ INDEX_STRING = '''
                 color: #e0e0e0;
                 border-bottom-left-radius: 4px;
             }
+            /* Markdown element styling inside assistant messages.
+               dcc.Markdown injects <p>, <ul>, <li>, <code>, etc. — tighten
+               their spacing so chat bubbles stay compact. */
+            .agent-message.assistant p {
+                margin: 0 0 6px 0;
+            }
+            .agent-message.assistant p:last-child {
+                margin-bottom: 0;
+            }
+            .agent-message.assistant ul,
+            .agent-message.assistant ol {
+                margin: 4px 0;
+                padding-left: 20px;
+            }
+            .agent-message.assistant li {
+                margin: 2px 0;
+            }
+            .agent-message.assistant code {
+                background: #2a2a2a;
+                border: 1px solid #454545;
+                border-radius: 3px;
+                padding: 1px 5px;
+                font-size: 11.5px;
+                font-family: ui-monospace, monospace;
+                color: #d0d0d0;
+            }
+            .agent-message.assistant strong {
+                color: #f5f5f5;
+            }
+            .agent-message.assistant a {
+                color: #60a5fa;
+            }
             .agent-message.user {
                 align-self: flex-end;
                 background: #1e3a5f;
@@ -858,6 +890,39 @@ INDEX_STRING = '''
                 font-style: italic;
                 text-align: center;
                 font-size: 12px;
+            }
+            .agent-tool-indicator {
+                align-self: flex-start;
+                font-size: 11px;
+                color: #9ca3af;
+                padding: 4px 10px;
+                border-radius: 6px;
+                background: #2a2a2a;
+                border: 1px solid #3d3d3d;
+                margin: 2px 0;
+                font-family: ui-monospace, monospace;
+                letter-spacing: 0.2px;
+            }
+            .agent-tool-indicator.running {
+                color: #60a5fa;
+                border-color: #3b82f6;
+                background: #1e3a5f;
+                animation: agent-tool-pulse 1.2s ease-in-out infinite;
+            }
+            .agent-tool-indicator.done {
+                color: #6ee7b7;
+                border-color: #065f46;
+                background: #064e3b;
+                opacity: 0.75;
+            }
+            .agent-tool-indicator.failed {
+                color: #fca5a5;
+                border-color: #7f1d1d;
+                background: #450a0a;
+            }
+            @keyframes agent-tool-pulse {
+                0%, 100% { opacity: 1.0; }
+                50% { opacity: 0.55; }
             }
             .agent-thinking {
                 font-size: 11px;

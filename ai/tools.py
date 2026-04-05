@@ -199,11 +199,22 @@ class AgentTools:
     def run_automl(self, time_budget: int = 60) -> str:
         """Train and evaluate multiple ML pipelines using AutoML to find the best model.
 
+        Wall-clock time is roughly 2x `time_budget` because the implementation
+        runs nested cross-validation on top of the search (outer fit +
+        ~5 inner fits) for unbiased held-out metrics. With the default
+        time_budget of 60s, expect training to take around 1-2 minutes.
+
         Args:
-            time_budget: Maximum seconds to search for the best model. Default 60.
+            time_budget: Per-search time budget in seconds. Default 60 (total
+                wall time ~2 minutes). Don't repeat this number verbatim to
+                the user — describe duration as "about 1-2 minutes".
 
         Returns:
-            Best model name, top-5 leaderboard, held-out 5-fold CV metrics, and feature importances.
+            Best model name, top-5 leaderboard, held-out 5-fold CV metrics,
+            feature importances, and data-quality warnings. After this tool
+            returns successfully, the prediction form on the right side of
+            the canvas is already populated and ready to use; the user does
+            NOT need to do anything to open it.
         """
         try:
             results = self.ml.train(time_budget=time_budget)
@@ -235,6 +246,14 @@ class AgentTools:
             lines.append("\nWarnings:")
             for w in results["warnings"]:
                 lines.append(f"  - {w}")
+
+        lines.append(
+            "\nPrediction form status: READY — dropdowns are populated from "
+            "training categories and the form is already visible on the "
+            "right side of the canvas. Tell the user the form is ready and "
+            "they can enter values to make predictions. Do NOT ask the user "
+            "if they want to open the form — it is already open."
+        )
 
         return "\n".join(lines)
 
@@ -384,18 +403,30 @@ class AgentTools:
         Args:
             x_feature: Feature name for the x-axis.
             y_feature: Feature name for the y-axis.
-            color_by: Optional categorical feature for color coding points.
+            color_by: Optional categorical feature for color coding points
+                (e.g. 'Wafer', 'Pad', 'Slurry', 'Conditioner').
             filter_column: Optional column name to filter data on.
-            filter_value: Optional value to filter for in filter_column.
+            filter_value: Value to match in filter_column. Must be an exact
+                value present in the data. If unsure, call get_dataset_summary
+                first to see available values.
 
         Returns:
-            Plotly figure as a JSON-serializable dictionary.
+            Plotly figure as a JSON-serializable dictionary, or an error
+            string if the filter_value is not found.
         """
         df = self.dm.get_all_data()
         if df.empty:
             return self._empty_fig("No data loaded.")
 
         if filter_column and filter_value and filter_column in df.columns:
+            # Validate filter_value — return a helpful error rather than
+            # silently producing an empty plot.
+            valid = sorted(str(v) for v in df[filter_column].dropna().unique() if str(v))
+            if str(filter_value) not in valid:
+                return (
+                    f"Filter value '{filter_value}' not found in column "
+                    f"'{filter_column}'. Valid values: {', '.join(valid)}"
+                )
             df = df[df[filter_column] == filter_value]
 
         fig = go.Figure()
@@ -501,8 +532,16 @@ class AgentTools:
     def generate_correlation_heatmap(self, features: list[str] = None) -> dict:
         """Generate a correlation matrix heatmap for numerical features.
 
+        IMPORTANT: omit the `features` parameter entirely to include ALL
+        numerical features (COF, Fz, Var Fz, Mean Temp, Init Temp, High Temp,
+        Removal, WIWNU, Mean Pressure, Mean Velocity, P.V, COF.P.V,
+        Sommerfeld, Pressure PSI, Polish Time, Removal Rate). Passing an
+        empty list or a partial list will limit the heatmap to only those
+        columns — this is almost never what the user wants.
+
         Args:
-            features: Optional list of feature names. Defaults to all numerical analysis features.
+            features: Optional list of feature names. Defaults to ALL numerical
+                analysis features when omitted or empty.
 
         Returns:
             Plotly figure as a JSON-serializable dictionary.
@@ -511,7 +550,7 @@ class AgentTools:
         if df.empty:
             return self._empty_fig("No data loaded.")
 
-        if features is None:
+        if not features:  # None or empty list → use all defaults
             features = [f for f in ANALYSIS_FEATURES if f in df.columns]
 
         numeric_df = df[features].select_dtypes(include=[np.number]).dropna(axis=1, how="all")

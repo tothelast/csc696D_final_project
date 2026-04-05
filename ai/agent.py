@@ -15,30 +15,31 @@ logger = logging.getLogger(__name__)
 
 _MODEL = "qwen3.5:latest"
 
-_SYSTEM_PROMPT = """You are an AI assistant embedded in Araca Insights®, a semiconductor \
-wafer polishing analytics application. You help polishing engineers understand their \
-data and predict material removal rates.
+_SYSTEM_PROMPT = """You are an AI assistant embedded in Araca Insights®, a semiconductor wafer polishing analytics application. Users are polishing process engineers — domain experts in CMP, not in machine learning. Translate ML terminology into process-engineering language.
 
-You have access to tools for querying data, running ML models, detecting outliers, \
-and generating charts. Always use tools for data access and computation — never \
-guess numbers or make up data.
+# Tool usage rules
+- Always use tools for data access and computation. Never guess numbers or invent data.
+- Call chart-generation tools ONE AT A TIME. Never emit more than one tool call per response — batching breaks the tool-call parser.
+- Before calling a chart tool, state in one sentence what the chart will show and why it matters.
+- For predictions: call open_prediction_form to pre-fill the canvas form. Do NOT predict numbers yourself or invent values. If no model is trained yet, call run_automl first.
+- After calling open_prediction_form, tell the user the form is ready on the right side of the screen.
+- When the user asks to build, train, or refresh a prediction model, call `run_automl` DIRECTLY. Do NOT call `get_dataset_summary`, `get_file_details`, or `get_feature_statistics` beforehand — the greeting already reports file counts and the training result already reports data-quality warnings. Reserve those reconnaissance tools for when the user explicitly asks about the data.
+- Training via `run_automl` takes about 1-2 minutes of wall time (nested cross-validation runs extra fits). Tell the user "about 1-2 minutes" — never a precise number.
+- After `run_automl` finishes, the prediction form on the right side of the canvas is ALREADY open and populated. Do NOT ask "would you like to open the prediction form?" — tell the user it is ready to use.
 
-When explaining results, use plain language. Your users are domain experts in \
-polishing but not in machine learning. Translate ML concepts into process \
-engineering terms they understand.
+# Response format
+The chat UI renders your responses as Markdown. Use clean, minimal Markdown:
+- Use `**bold**` sparingly for key terms or final numbers.
+- Use `-` bullet lists (one item per line) for enumerations of 3 or more items.
+- Use short paragraphs (2-4 sentences) separated by a blank line.
+- State numbers inline with units: R² = 0.79, RMSE = 133 Å, Removal ≈ 540 Å.
+- Do NOT use headers (`#`, `##`, `###`) — responses are chat messages, not documents.
+- Do NOT use emojis.
+- Do NOT wrap entire responses in code fences.
+- Use backticks only for tool names or column names (e.g., `run_automl`, `Pressure PSI`).
 
-When generating charts, explain what the chart shows and why it matters before \
-displaying it.
-
-When the user asks for a prediction, use the open_prediction_form tool to \
-extract any parameters they mentioned and open the prediction form in the \
-canvas (right side of the screen). The form computes predictions \
-deterministically via code — do NOT predict numbers yourself or make up \
-values. If no model is trained yet, run run_automl first, then open the form. \
-After calling open_prediction_form, tell the user the form is ready on the \
-right and briefly describe what they should do.
-
-Keep responses concise and focused. Avoid unnecessary caveats or disclaimers."""
+# Tone
+Be direct and terse. Lead with the answer or recommendation on the first line. Skip filler ("I'd be happy to help", "Let me explain", "As you can see", "I hope this helps", "Great question"). Skip disclaimers unless a result is genuinely unreliable (too few training samples, constant features, etc.). No self-references to "the AI" or "the model I am"."""
 
 
 class StreamChunk:
@@ -95,7 +96,10 @@ class AgentEngine:
                         model=_MODEL,
                         messages=self.messages,
                         tools=tool_funcs,
-                        think=True,
+                        # Thinking disabled: the "working" state is already
+                        # conveyed by tool indicators and the loading bubble,
+                        # and qwen3.5's thinking tokens confused users.
+                        think=False,
                         stream=True,
                     )
                 except Exception as exc:
@@ -165,15 +169,31 @@ class AgentEngine:
 
         logger.info("Calling tool: %s(%s)", func_name, args)
 
+        # Emit a "starting" chunk so the UI can show a running indicator and
+        # close any in-progress text bubble.
+        self.output_queue.put(StreamChunk("tool_start", func_name))
+
         func = getattr(self.tools, func_name, None)
         if func is None:
+            self.output_queue.put(StreamChunk(
+                "tool_end", {"name": func_name, "success": False}
+            ))
             return f"Error: unknown tool '{func_name}'"
 
         try:
             result = func(**args)
         except Exception as exc:
             logger.error("Tool %s failed: %s", func_name, exc)
+            self.output_queue.put(StreamChunk(
+                "tool_end", {"name": func_name, "success": False}
+            ))
             return f"Error calling {func_name}: {exc}"
+
+        # Mark the tool as finished (before charts/prefill side-effects so the
+        # UI can flip the indicator to "done" right away).
+        self.output_queue.put(StreamChunk(
+            "tool_end", {"name": func_name, "success": True}
+        ))
 
         if isinstance(result, dict) and "data" in result:
             self.output_queue.put(StreamChunk("chart", result))
