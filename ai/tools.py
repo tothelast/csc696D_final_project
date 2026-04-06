@@ -196,18 +196,23 @@ class AgentTools:
     # ML Tools
     # ------------------------------------------------------------------
 
-    def run_automl(self, time_budget: int = 60) -> str:
+    def run_automl(self, time_budget: int = 30) -> str:
         """Train and evaluate multiple ML pipelines using AutoML to find the best model.
 
-        Wall-clock time is roughly 2x `time_budget` because the implementation
-        runs nested cross-validation on top of the search (outer fit +
-        ~5 inner fits) for unbiased held-out metrics. With the default
-        time_budget of 60s, expect training to take around 1-2 minutes.
+        Any positive integer is valid for time_budget — there is NO minimum.
+        Wall-clock time is roughly 2x time_budget because nested
+        cross-validation runs additional fits for unbiased metrics.
+
+        Practical guidance by dataset size:
+        - Under 100 files: 30s (default) is sufficient — about 1 minute wall time
+        - 100-500 files: 60s gives a more thorough search
+        - 500+ files: 120s may help find better configurations
+        Longer budgets do NOT guarantee better results. On small datasets,
+        longer searches can overfit by selecting overly complex models.
 
         Args:
-            time_budget: Per-search time budget in seconds. Default 60 (total
-                wall time ~2 minutes). Don't repeat this number verbatim to
-                the user — describe duration as "about 1-2 minutes".
+            time_budget: Search budget in seconds. Default 30. Any positive
+                value is accepted. Wall time ≈ 2x this value.
 
         Returns:
             Best model name, top-5 leaderboard, held-out 5-fold CV metrics,

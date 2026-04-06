@@ -258,11 +258,19 @@ class AutoMLManager:
         }
 
     def _extract_importances(self, feature_cols: list[str]) -> dict:
-        """Extract feature importances from the best FLAML model."""
+        """Extract feature importances from the best FLAML model.
+
+        FLAML's DataTransformer may drop constant columns (e.g. Polish Time
+        or Slurry when they have a single unique value), so the model may see
+        fewer features than ``feature_cols``. When that happens, we read the
+        actual post-transform column names from the transformer rather than
+        falling back to generic ``feature_0`` labels.
+        """
         model = self.automl.model
-        if hasattr(model, "feature_importances_"):
+        importances = None
+        if hasattr(model, "feature_importances_") and model.feature_importances_ is not None:
             importances = model.feature_importances_
-        elif hasattr(model, "coef_"):
+        elif hasattr(model, "coef_") and model.coef_ is not None:
             importances = np.abs(model.coef_)
         else:
             estimator = model
@@ -270,17 +278,38 @@ class AutoMLManager:
                 estimator = model.named_steps.get(
                     "model", model.named_steps.get("estimator", model)
                 )
-            if hasattr(estimator, "feature_importances_"):
+            if hasattr(estimator, "feature_importances_") and estimator.feature_importances_ is not None:
                 importances = estimator.feature_importances_
-            elif hasattr(estimator, "coef_"):
+            elif hasattr(estimator, "coef_") and estimator.coef_ is not None:
                 importances = np.abs(estimator.coef_)
-            else:
-                return {col: 0.0 for col in feature_cols}
 
+        if importances is None:
+            return {col: 0.0 for col in feature_cols}
+
+        # Determine the correct column names for the importance vector.
+        names = feature_cols
         if len(importances) != len(feature_cols):
-            return {f"feature_{i}": float(v) for i, v in enumerate(importances)}
+            # The transformer dropped constant columns — get the actual names
+            # from a single-row transform so labels stay meaningful.
+            try:
+                X_sample = self.train_df[feature_cols].head(1).copy()
+                for col in PREDICTION_CATEGORICAL_FEATURES:
+                    if col in X_sample.columns:
+                        X_sample[col] = X_sample[col].astype(
+                            self._cat_dtypes[col]
+                        )
+                X_trans = self.automl._transformer.transform(X_sample)
+                if hasattr(X_trans, "columns") and len(X_trans.columns) == len(
+                    importances
+                ):
+                    names = list(X_trans.columns)
+            except Exception:
+                pass  # fall through to best-effort below
 
-        return {col: float(imp) for col, imp in zip(feature_cols, importances)}
+        if len(importances) == len(names):
+            return {col: float(imp) for col, imp in zip(names, importances)}
+        # Last resort — still use indexed names but shouldn't happen now
+        return {f"feature_{i}": float(v) for i, v in enumerate(importances)}
 
     def _build_leaderboard(self) -> list[dict]:
         """Build a sorted leaderboard from FLAML's search history."""
