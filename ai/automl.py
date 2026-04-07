@@ -35,13 +35,13 @@ class AutoMLManager:
         # single-row frame would reassign codes starting at 0 and silently
         # produce wrong predictions.
         self._cat_dtypes: dict | None = None
-        # Regression estimators for FLAML to search over. Weighted toward tree
-        # models since they outperform linear on this wafer-polishing dataset;
-        # "enet" (ElasticNet) is included as the Ridge-equivalent linear
-        # fallback. Used by both the main fit and the OOF metric evaluation.
-        # Note: "lrl2" is LogisticRegression (classification-only); "enet"
-        # is the regression-capable L2-regularized linear model in FLAML.
-        # "catboost" would be a good addition but requires a separate install.
+        # Regression estimators for FLAML to search over. Tree models are
+        # listed first (they typically outperform linear on tabular CMP data);
+        # three linear fallbacks provide diversity: ElasticNet (L1+L2),
+        # LassoLARS (pure L1 feature selection), and SGD (Huber loss for
+        # outlier robustness). "catboost" would be a good addition but
+        # requires a separate install. "ensemble=True" is broken in FLAML
+        # 2.5.0 (StackingRegressor rejects FLAML's estimator wrappers).
         self._estimator_list = [
             "lgbm",
             "xgboost",
@@ -50,6 +50,8 @@ class AutoMLManager:
             "extra_tree",
             "histgb",
             "enet",
+            "lassolars",
+            "sgd",
         ]
 
     def prepare_data(self) -> pd.DataFrame:
@@ -123,6 +125,7 @@ class AutoMLManager:
             metric="rmse",
             starting_points="data",
             early_stop=True,
+            retrain_full=True,
             log_file_name="",
             verbose=0,
             seed=42,
@@ -146,6 +149,7 @@ class AutoMLManager:
 
         for train_idx, val_idx in kf.split(X):
             fold_ml = AutoML()
+            # time_budget=-1 + max_iter=1: fit exactly one config, no time limit.
             fold_ml.fit(
                 X.iloc[train_idx],
                 y[train_idx],
@@ -155,6 +159,7 @@ class AutoMLManager:
                 starting_points={best_estimator_name: [best_config]},
                 estimator_list=[best_estimator_name],
                 eval_method="holdout",
+                retrain_full=True,
                 log_file_name="",
                 verbose=0,
                 seed=42,
@@ -320,54 +325,38 @@ class AutoMLManager:
     def _extract_importances(self, feature_cols: list[str]) -> dict:
         """Extract feature importances from the best FLAML model.
 
-        FLAML's DataTransformer may drop constant columns (e.g. Polish Time
-        or Slurry when they have a single unique value), so the model may see
-        fewer features than ``feature_cols``. When that happens, we read the
-        actual post-transform column names from the transformer rather than
-        falling back to generic ``feature_0`` labels.
+        Uses FLAML's built-in ``feature_importances_`` property as the
+        primary source. When the DataTransformer drops constant columns,
+        the importance vector is shorter than ``feature_cols``; in that
+        case we recover the actual post-transform column names from the
+        transformer so labels stay meaningful.
         """
-        model = self.automl.model
-        importances = None
-
-        # Try direct model attributes, then fall back to inner estimator.
-        for obj in (model, getattr(model, "estimator", None),
-                    getattr(model, "model", None)):
-            if obj is None:
-                continue
-            for attr in ("feature_importances_", "coef_"):
-                val = getattr(obj, attr, None)
-                if val is not None:
-                    importances = np.abs(val) if attr == "coef_" else val
-                    break
-            if importances is not None:
-                break
-
+        importances = self.automl.feature_importances_
         if importances is None:
             return {col: 0.0 for col in feature_cols}
 
-        # Determine the correct column names for the importance vector.
-        names = feature_cols
-        if len(importances) != len(feature_cols):
-            # The transformer dropped constant columns — get the actual names
-            # from a single-row transform so labels stay meaningful.
-            try:
-                X_sample = self.train_df[feature_cols].head(1).copy()
-                for col in PREDICTION_CATEGORICAL_FEATURES:
-                    if col in X_sample.columns:
-                        X_sample[col] = X_sample[col].astype(
-                            self._cat_dtypes[col]
-                        )
-                X_trans = self.automl._transformer.transform(X_sample)
-                if hasattr(X_trans, "columns") and len(X_trans.columns) == len(
-                    importances
-                ):
-                    names = list(X_trans.columns)
-            except Exception:
-                pass  # fall through to best-effort below
+        importances = np.abs(importances)
 
-        if len(importances) == len(names):
-            return {col: float(imp) for col, imp in zip(names, importances)}
-        # Last resort — still use indexed names but shouldn't happen now
+        # When all features survive the transformer, names align directly.
+        if len(importances) == len(feature_cols):
+            return {col: float(imp) for col, imp in zip(feature_cols, importances)}
+
+        # The transformer dropped constant columns — recover actual names.
+        try:
+            X_sample = self.train_df[feature_cols].head(1).copy()
+            for col in PREDICTION_CATEGORICAL_FEATURES:
+                if col in X_sample.columns:
+                    X_sample[col] = X_sample[col].astype(self._cat_dtypes[col])
+            X_trans = self.automl._transformer.transform(X_sample)
+            if hasattr(X_trans, "columns") and len(X_trans.columns) == len(importances):
+                return {
+                    col: float(imp)
+                    for col, imp in zip(X_trans.columns, importances)
+                }
+        except Exception:
+            pass
+
+        # Last resort — indexed names (should not happen).
         return {f"feature_{i}": float(v) for i, v in enumerate(importances)}
 
     def _build_leaderboard(self) -> list[dict]:

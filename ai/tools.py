@@ -5,7 +5,6 @@ The ollama-python library auto-generates JSON schemas from the type
 annotations and docstrings.
 """
 
-import json
 import logging
 
 import numpy as np

@@ -55,7 +55,9 @@ class AgentEngine:
 
     def __init__(self, data_manager, port: int = 11434):
         self.port = port
-        self.client = ollama.Client(host=f"http://localhost:{self.port}")
+        self.client = ollama.Client(
+            host=f"http://localhost:{self.port}", timeout=60
+        )
         self.automl_manager = AutoMLManager(data_manager)
         self.tools = AgentTools(data_manager, self.automl_manager)
         self.messages: list[dict] = [

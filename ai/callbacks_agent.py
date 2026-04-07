@@ -4,14 +4,12 @@ Handles: sending messages, polling streamed responses, tab activation,
 suggestion chips, and rendering charts inline.
 """
 
-import json
 import logging
 from queue import Empty
 
-import plotly
-from dash import ALL, Input, Output, State, callback_context, dcc, html, no_update
+from dash import Input, Output, State, callback_context, dcc, html, no_update
 
-from ai.agent import AgentEngine, StreamChunk
+from ai.agent import AgentEngine
 from dashboard.constants import (
     PREDICTION_CATEGORICAL_FEATURES,
     PREDICTION_NUMERICAL_FEATURES,
