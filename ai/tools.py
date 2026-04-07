@@ -5,6 +5,7 @@ The ollama-python library auto-generates JSON schemas from the type
 annotations and docstrings.
 """
 
+import itertools
 import logging
 
 import numpy as np
@@ -426,7 +427,7 @@ class AgentTools:
         """
         df = self.dm.get_all_data()
         if df.empty:
-            return self._empty_fig("No data loaded.")
+            return {"figure": self._empty_fig("No data loaded."), "summary": "No data loaded."}
 
         if filter_column and filter_value and filter_column in df.columns:
             # Validate filter_value — return a helpful error rather than
@@ -461,13 +462,30 @@ class AgentTools:
                 hovertemplate=f"<b>%{{text}}</b><br>{x_feature}: %{{x:.4g}}<br>{y_feature}: %{{y:.4g}}<extra></extra>",
             ))
 
+        # Build a text summary for the LLM.
+        common = df[[x_feature, y_feature]].dropna()
+        n = len(common)
+        summary_lines = [f"Scatter: {y_feature} vs {x_feature}, n={n} points"]
+        if n >= 3:
+            r_val = float(np.corrcoef(common[x_feature], common[y_feature])[0, 1])
+            trend = "positive" if r_val > 0 else "negative"
+            summary_lines.append(f"  Pearson r={r_val:.3f} ({trend} trend)")
+        summary_lines.append(
+            f"  x range: {common[x_feature].min():.4g} to {common[x_feature].max():.4g}"
+        )
+        summary_lines.append(
+            f"  y range: {common[y_feature].min():.4g} to {common[y_feature].max():.4g}"
+        )
+        if color_by and color_by in df.columns:
+            summary_lines.append(f"  Colored by {color_by} ({df[color_by].nunique()} groups)")
+
         fig.update_layout(**DARK_LAYOUT)
         fig.update_layout(
             title=f"{y_feature} vs {x_feature}",
             xaxis_title=x_feature,
             yaxis_title=y_feature,
         )
-        return fig.to_plotly_json()
+        return {"figure": fig.to_plotly_json(), "summary": "\n".join(summary_lines)}
 
     def generate_distribution(self, feature: str, group_by: str = None) -> dict:
         """Generate a histogram or box plot for a feature.
@@ -481,9 +499,11 @@ class AgentTools:
         """
         df = self.dm.get_all_data()
         if df.empty:
-            return self._empty_fig("No data loaded.")
+            return {"figure": self._empty_fig("No data loaded."), "summary": "No data loaded."}
 
         fig = go.Figure()
+        summary_lines = []
+
         if group_by and group_by in df.columns:
             for i, (group, group_df) in enumerate(df.groupby(group_by)):
                 fig.add_trace(go.Box(
@@ -492,6 +512,18 @@ class AgentTools:
                     marker_color=CLUSTER_COLORS[i % len(CLUSTER_COLORS)],
                 ))
             fig.update_layout(title=f"{feature} by {group_by}")
+            # Summary for grouped box plot.
+            summary_lines.append(f"{feature} by {group_by}:")
+            group_means = df.groupby(group_by)[feature].mean().dropna()
+            for name, group in df.groupby(group_by):
+                valid = group[feature].dropna()
+                if not valid.empty:
+                    summary_lines.append(
+                        f"  {name}: mean={valid.mean():.4g}, median={valid.median():.4g}, n={len(valid)}"
+                    )
+            if not group_means.empty:
+                summary_lines.append(f"  Highest mean: {group_means.idxmax()} ({group_means.max():.4g})")
+                summary_lines.append(f"  Lowest mean: {group_means.idxmin()} ({group_means.min():.4g})")
         else:
             fig.add_trace(go.Histogram(
                 x=df.get(feature),
@@ -500,10 +532,19 @@ class AgentTools:
                 opacity=0.85,
             ))
             fig.update_layout(title=f"Distribution of {feature}")
+            # Summary for histogram.
+            valid = df[feature].dropna()
+            summary_lines.append(f"Distribution of {feature} (n={len(valid)})")
+            summary_lines.append(f"  mean={valid.mean():.4g}, std={valid.std():.4g}")
+            summary_lines.append(f"  min={valid.min():.4g}, max={valid.max():.4g}")
+            skew_val = float(valid.skew())
+            skew_dir = ("right-skewed" if skew_val > 0.5
+                        else ("left-skewed" if skew_val < -0.5 else "roughly symmetric"))
+            summary_lines.append(f"  skewness={skew_val:.2f} ({skew_dir})")
 
         fig.update_layout(**DARK_LAYOUT)
         fig.update_layout(yaxis_title="Count" if not group_by else feature)
-        return fig.to_plotly_json()
+        return {"figure": fig.to_plotly_json(), "summary": "\n".join(summary_lines)}
 
     def generate_bar_chart(self, feature: str, group_by: str) -> dict:
         """Generate a grouped bar chart showing means with error bars.
@@ -517,7 +558,7 @@ class AgentTools:
         """
         df = self.dm.get_all_data()
         if df.empty:
-            return self._empty_fig("No data loaded.")
+            return {"figure": self._empty_fig("No data loaded."), "summary": "No data loaded."}
 
         grouped = df.groupby(group_by)[feature]
         means = grouped.mean()
@@ -531,13 +572,22 @@ class AgentTools:
             marker_color=COLORS["accent"],
         ))
 
+        # Summary for the LLM.
+        summary_lines = [f"Mean {feature} by {group_by}:"]
+        for name in means.index:
+            summary_lines.append(
+                f"  {name}: mean={means[name]:.4g} (std={stds[name]:.4g})"
+            )
+        summary_lines.append(f"  Highest: {means.idxmax()} ({means.max():.4g})")
+        summary_lines.append(f"  Lowest: {means.idxmin()} ({means.min():.4g})")
+
         fig.update_layout(**DARK_LAYOUT)
         fig.update_layout(
             title=f"Mean {feature} by {group_by}",
             xaxis_title=group_by,
             yaxis_title=feature,
         )
-        return fig.to_plotly_json()
+        return {"figure": fig.to_plotly_json(), "summary": "\n".join(summary_lines)}
 
     def generate_correlation_heatmap(self, features: list[str] = None) -> dict:
         """Generate a correlation matrix heatmap for numerical features.
@@ -558,7 +608,7 @@ class AgentTools:
         """
         df = self.dm.get_all_data()
         if df.empty:
-            return self._empty_fig("No data loaded.")
+            return {"figure": self._empty_fig("No data loaded."), "summary": "No data loaded."}
 
         if not features:  # None or empty list → use all defaults
             features = [f for f in ANALYSIS_FEATURES if f in df.columns]
@@ -577,13 +627,32 @@ class AgentTools:
             textfont={"size": 10},
         ))
 
+        # Build a text summary of key correlations for the LLM.
+        summary_lines = []
+        if "Removal" in corr.columns:
+            removal_corr = corr["Removal"].drop("Removal").sort_values(
+                key=abs, ascending=False
+            )
+            summary_lines.append("Correlations with Removal:")
+            for feat, val in removal_corr.items():
+                summary_lines.append(f"  {feat}: r={val:.2f}")
+
+        pairs = [
+            (a, b, corr.loc[a, b])
+            for a, b in itertools.combinations(corr.columns, 2)
+        ]
+        pairs.sort(key=lambda x: abs(x[2]), reverse=True)
+        summary_lines.append("Strongest overall correlations:")
+        for a, b, r in pairs[:5]:
+            summary_lines.append(f"  {a} vs {b}: r={r:.2f}")
+
         fig.update_layout(**DARK_LAYOUT)
         fig.update_layout(
             title="Feature Correlation Matrix",
             width=700,
             height=600,
         )
-        return fig.to_plotly_json()
+        return {"figure": fig.to_plotly_json(), "summary": "\n".join(summary_lines)}
 
     def generate_time_series(self, filename: str, features: list[str]) -> dict:
         """Generate a time-series plot for a specific polishing run file.
@@ -597,9 +666,11 @@ class AgentTools:
         """
         ts_data = self.dm.get_file_data(filename)
         if ts_data is None:
-            return self._empty_fig(f"File '{filename}' not found.")
+            return {"figure": self._empty_fig(f"File '{filename}' not found."),
+                    "summary": f"File '{filename}' not found."}
 
         fig = go.Figure()
+        summary_lines = [f"Time series for {filename}:"]
         for i, feat in enumerate(features):
             if feat in ts_data.columns:
                 fig.add_trace(go.Scatter(
@@ -608,6 +679,20 @@ class AgentTools:
                     name=feat,
                     line=dict(color=CLUSTER_COLORS[i % len(CLUSTER_COLORS)]),
                 ))
+                series = ts_data[feat].dropna()
+                if not series.empty:
+                    start_avg = series.iloc[:5].mean()
+                    end_avg = series.iloc[-5:].mean()
+                    if end_avg > start_avg * 1.05:
+                        trend = "increasing"
+                    elif end_avg < start_avg * 0.95:
+                        trend = "decreasing"
+                    else:
+                        trend = "stable"
+                    summary_lines.append(
+                        f"  {feat}: min={series.min():.4g}, max={series.max():.4g}, "
+                        f"mean={series.mean():.4g}, trend={trend}"
+                    )
 
         fig.update_layout(**DARK_LAYOUT)
         fig.update_layout(
@@ -615,20 +700,22 @@ class AgentTools:
             xaxis_title="Sample",
             yaxis_title="Value",
         )
-        return fig.to_plotly_json()
+        return {"figure": fig.to_plotly_json(), "summary": "\n".join(summary_lines)}
 
-    def generate_model_plots(self) -> list[dict]:
+    def generate_model_plots(self) -> dict:
         """Generate all diagnostic plots for the currently trained model.
 
         Returns:
-            List of 4 Plotly figures: predicted vs actual, feature importance,
-            residuals vs predicted, and residual distribution.
+            Dict with 'figures' (list of 4 Plotly figures) and 'summary' text:
+            predicted vs actual, feature importance, residuals vs predicted,
+            and residual distribution.
         """
         try:
             diag = self.ml.get_diagnostics()
         except ValueError:
             empty = self._empty_fig("No model trained.")
-            return [empty, empty, empty, empty]
+            return {"figures": [empty, empty, empty, empty],
+                    "summary": "No model trained yet."}
 
         y_true = np.array(diag["y_true"])
         y_pred = np.array(diag["y_pred"])
@@ -704,8 +791,29 @@ class AgentTools:
                            xaxis_title="Residual (Å)", yaxis_title="Count",
                            showlegend=False)
 
-        return [fig1.to_plotly_json(), fig2.to_plotly_json(),
-                fig3.to_plotly_json(), fig4.to_plotly_json()]
+        # Build a text summary of model diagnostics for the LLM.
+        sorted_imp_desc = sorted(importances.items(), key=lambda x: x[1], reverse=True)
+        summary_lines = [
+            f"Model diagnostics ({diag['metrics']['best_model']}):",
+            f"  R²={diag['metrics']['r2']:.3f}, RMSE={diag['metrics']['rmse']:.0f}Å, MAE={diag['metrics']['mae']:.0f}Å",
+            f"  Residuals: mean={np.mean(residuals):.1f}, std={np.std(residuals):.1f}, "
+            f"range=[{np.min(residuals):.1f}, {np.max(residuals):.1f}]",
+            "  Top features: " + ", ".join(f"{k}={v:.3f}" for k, v in sorted_imp_desc[:5]),
+        ]
+        abs_errors = np.abs(residuals)
+        worst_idx = np.argsort(abs_errors)[-3:][::-1]
+        summary_lines.append("  Largest errors:")
+        for idx in worst_idx:
+            summary_lines.append(
+                f"    {file_names[idx]}: actual={y_true[idx]:.0f}, "
+                f"pred={y_pred[idx]:.0f}, error={residuals[idx]:.0f}"
+            )
+
+        return {
+            "figures": [fig1.to_plotly_json(), fig2.to_plotly_json(),
+                        fig3.to_plotly_json(), fig4.to_plotly_json()],
+            "summary": "\n".join(summary_lines),
+        }
 
     # ------------------------------------------------------------------
     # Helpers

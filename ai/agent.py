@@ -14,6 +14,7 @@ from ai.tools import AgentTools
 logger = logging.getLogger(__name__)
 
 _MODEL = "qwen3.5:latest"
+_CHAT_OPTIONS = {"temperature": 0.2, "num_ctx": 16384, "num_predict": 4096}
 
 _SYSTEM_PROMPT = """You are an AI assistant embedded in Araca Insights®, a semiconductor wafer polishing analytics application. Users are polishing process engineers — domain experts in CMP, not in machine learning. Translate ML terminology into process-engineering language.
 
@@ -26,6 +27,13 @@ _SYSTEM_PROMPT = """You are an AI assistant embedded in Araca Insights®, a semi
 - When the user asks to build, train, or refresh a prediction model, call `run_automl` DIRECTLY. Do NOT call `get_dataset_summary`, `get_file_details`, or `get_feature_statistics` beforehand — the greeting already reports file counts and the training result already reports data-quality warnings. Reserve those reconnaissance tools for when the user explicitly asks about the data.
 - Training via `run_automl` with default budget (30s) takes roughly 30-40 seconds of wall time. Any positive time_budget is valid — there is NO minimum. Never refuse a user's chosen budget. Longer budgets do NOT guarantee better results on small datasets (under 100 files).
 - After `run_automl` finishes, the prediction form on the right side of the canvas is ALREADY open and populated. Do NOT ask "would you like to open the prediction form?" — tell the user it is ready to use.
+- When the user's request is ambiguous, pick reasonable defaults and state what you chose. For example: "I'll use all numerical features for the heatmap" or "I'll use the default 30-second training budget."
+
+# Data accuracy rules
+- When a chart tool returns a data summary, use ONLY those exact numbers when discussing the chart. Never round differently, invent trends, or embellish beyond what the summary states.
+- If a tool result does not include specific numbers, do not fabricate them. Say "the chart is displayed on the right" and let the user interpret visuals.
+- Never describe visual patterns (clusters, outlier positions, color gradients) that you cannot verify from the numerical data summary.
+- When stating correlations, always include the actual r value from the summary (e.g. "r=0.55") rather than vague terms like "strong" or "weak".
 
 # Response format
 The chat UI renders your responses as Markdown. Use clean, minimal Markdown:
@@ -103,6 +111,7 @@ class AgentEngine:
                         # and qwen3.5's thinking tokens confused users.
                         think=False,
                         stream=True,
+                        options=_CHAT_OPTIONS,
                     )
                 except Exception as exc:
                     logger.error("Ollama chat error: %s", exc)
@@ -197,34 +206,59 @@ class AgentEngine:
             "tool_end", {"name": func_name, "success": True}
         ))
 
-        if isinstance(result, dict) and "data" in result:
+        if isinstance(result, dict) and "figure" in result:
+            # Single chart with summary (new format from chart tools).
+            self.output_queue.put(StreamChunk("chart", result["figure"]))
+        elif isinstance(result, dict) and "figures" in result:
+            # Multiple charts with summary (generate_model_plots).
+            self.output_queue.put(StreamChunk("charts", result["figures"]))
+        elif isinstance(result, dict) and "data" in result:
+            # Legacy fallback: bare Plotly figure.
             self.output_queue.put(StreamChunk("chart", result))
         elif isinstance(result, list) and result and isinstance(result[0], dict):
+            # Legacy fallback: list of bare Plotly figures.
             self.output_queue.put(StreamChunk("charts", result))
         elif isinstance(result, dict) and "prefill" in result:
             # open_prediction_form returns {"prefill": {...}, "message": str}.
-            # Surface the prefill payload to the canvas form.
             self.output_queue.put(StreamChunk("prefill", result["prefill"]))
 
         return result
 
     def _format_tool_result(self, result: Any) -> str:
-        """Format a tool result as a string for the LLM context."""
+        """Format a tool result as a string for the LLM context.
+
+        Chart tools return {"figure": ..., "summary": ...}.  The summary
+        gives the LLM real numbers to cite so it never has to guess.
+        """
         if isinstance(result, str):
             return result
+        if isinstance(result, dict) and "figure" in result:
+            summary = result.get("summary", "")
+            if summary:
+                if len(summary) > 1500:
+                    summary = summary[:1500] + "\n  [summary truncated]"
+                return f"[Chart displayed to user]\nData summary:\n{summary}"
+            return "[Chart displayed to user]"
+        if isinstance(result, dict) and "figures" in result:
+            n = len(result["figures"])
+            summary = result.get("summary", "")
+            if summary:
+                if len(summary) > 1500:
+                    summary = summary[:1500] + "\n  [summary truncated]"
+                return f"[{n} diagnostic charts displayed to user]\nData summary:\n{summary}"
+            return f"[{n} diagnostic charts displayed to user]"
+        # Legacy fallback for bare Plotly figures.
         if isinstance(result, dict) and "data" in result:
-            return "[Chart generated and displayed to user]"
+            return "[Chart displayed to user]"
         if isinstance(result, list) and result and isinstance(result[0], dict):
-            return f"[{len(result)} diagnostic charts generated and displayed to user]"
+            return f"[{len(result)} diagnostic charts displayed to user]"
         if isinstance(result, dict) and "message" in result:
-            # e.g. open_prediction_form result — feed the message back so the
-            # LLM can reference what it told the user.
             return result["message"]
         return json.dumps(result, default=str)
 
     def _prune_history(self):
-        """Keep conversation history under ~6K tokens by removing old messages."""
-        max_chars = 24000
+        """Keep conversation history under ~12K tokens by removing old messages."""
+        max_chars = 48000
         total = sum(len(m.get("content", "")) for m in self.messages)
         while total > max_chars and len(self.messages) > 2:
             removed = self.messages.pop(1)
