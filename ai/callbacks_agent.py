@@ -631,22 +631,15 @@ def register_agent_callbacks(app, data_manager, agent_engine: AgentEngine):
                 style={'color': '#ef4444', 'fontSize': '13px'},
             )
 
-        # AutoMLManager.predict() currently expects fixed kwargs. If the
-        # feature list grows, extend predict() alongside this dict.
+        # Build kwargs using column names directly — predict() now accepts
+        # **kwargs keyed by the constant column names, so adding new features
+        # only requires updating constants.py.
         kwargs = dict(zip(
             PREDICTION_CATEGORICAL_FEATURES,
             [v.strip() if isinstance(v, str) else v for v in cat_values],
         ))
-        kwargs['pressure_psi'] = num_values[
-            PREDICTION_NUMERICAL_FEATURES.index('Pressure PSI')
-        ]
-        kwargs['polish_time'] = num_values[
-            PREDICTION_NUMERICAL_FEATURES.index('Polish Time')
-        ]
-        # Normalize categorical kwargs to predict()'s parameter names.
-        cat_rename = {'Wafer': 'wafer', 'Pad': 'pad', 'Slurry': 'slurry',
-                      'Conditioner': 'conditioner'}
-        kwargs = {cat_rename.get(k, k): v for k, v in kwargs.items()}
+        for feat, val in zip(PREDICTION_NUMERICAL_FEATURES, num_values):
+            kwargs[feat] = val
 
         try:
             result = _engine.automl_manager.predict(**kwargs)

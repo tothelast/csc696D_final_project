@@ -200,11 +200,11 @@ class AgentTools:
         """Train and evaluate multiple ML pipelines using AutoML to find the best model.
 
         Any positive integer is valid for time_budget — there is NO minimum.
-        Wall-clock time is roughly 2x time_budget because nested
-        cross-validation runs additional fits for unbiased metrics.
+        Wall-clock time is approximately equal to time_budget plus a few
+        seconds for out-of-fold metric evaluation.
 
         Practical guidance by dataset size:
-        - Under 100 files: 30s (default) is sufficient — about 1 minute wall time
+        - Under 100 files: 30s (default) is sufficient
         - 100-500 files: 60s gives a more thorough search
         - 500+ files: 120s may help find better configurations
         Longer budgets do NOT guarantee better results. On small datasets,
@@ -212,7 +212,7 @@ class AgentTools:
 
         Args:
             time_budget: Search budget in seconds. Default 30. Any positive
-                value is accepted. Wall time ≈ 2x this value.
+                value is accepted.
 
         Returns:
             Best model name, top-5 leaderboard, held-out 5-fold CV metrics,
@@ -226,12 +226,18 @@ class AgentTools:
         except ValueError as exc:
             return f"Cannot train: {exc}"
 
+        m = results["metrics"]
         lines = [f"AutoML complete. Best model: {results['best_model']}"]
         lines.append(
-            f"Held-out CV metrics: R²={results['metrics']['r2']:.3f}, "
-            f"CV RMSE={results['metrics']['rmse']:.0f}Å, "
-            f"CV MAE={results['metrics']['mae']:.0f}Å, "
+            f"Held-out CV metrics: R²={m['r2']:.3f}, "
+            f"CV RMSE={m['rmse']:.0f}Å, "
+            f"CV MAE={m['mae']:.0f}Å, "
             f"trained on {results['n_train']} files."
+        )
+        lines.append(
+            f"Timing: best model found in {m['search_time']}s, "
+            f"total wall time {m['wall_time']}s "
+            f"(budget: {m['time_budget']}s)."
         )
 
         if results["leaderboard"]:
