@@ -1,6 +1,6 @@
 # Conversation Summary: AI Agent Integration for Araca Insights®
 
-**Date:** 2026-03-29 (initial), 2026-04-05 (chat-canvas split, major revision + metric fix)
+**Date:** 2026-03-29 (initial), 2026-04-05 (chat-canvas split, major revision + metric fix), 2026-04-07 (anti-hallucination redesign)
 **Project:** Araca Insights® — semiconductor wafer polishing analytics
 
 ---
@@ -436,3 +436,89 @@ All implementation is complete across three sessions. The dashboard has five tab
 - **Session-only memory** with no cross-project persistence
 
 Both prediction interfaces use the same feature set (`Pressure PSI`, `Polish Time` in minutes, `Wafer`, `Pad`, `Slurry`, `Conditioner`) and target (`Removal` in Angstroms), enabling direct comparison of manual vs automated model selection.
+
+---
+
+## Session 4 (2026-04-07): Anti-Hallucination Redesign & LLM Parameter Optimization
+
+### Critical Problem: Agent Hallucinating Chart Interpretations
+
+**Symptom:** When the agent generated charts (especially the correlation heatmap), it fabricated interpretations of data it couldn't see. Example: the heatmap showed COF has a **0.55 positive** correlation with Removal, but the agent claimed "a **strong negative** correlation" -- completely wrong. This created mistrust because the user could see the chart contradicting the agent's claims.
+
+**Root cause:** `_format_tool_result()` in `agent.py` stripped all chart data, returning only `[Chart generated and displayed to user]` to the LLM. The LLM had zero information about the chart's contents but was not instructed to admit ignorance, so it confabulated plausible-sounding (but incorrect) interpretations.
+
+**Design decision:** Rather than making the agent say "I can't see the chart," feed the actual data back. This makes the agent genuinely knowledgeable about what it shows.
+
+### Fix 1: Chart Summary Extraction (ai/tools.py)
+
+All 6 chart tools changed return format from bare Plotly JSON (`fig.to_plotly_json()`) to `{"figure": <plotly_json>, "summary": "<text digest>"}`. The summary gives the LLM real numbers to cite:
+
+| Tool | Summary contents |
+|------|-----------------|
+| `generate_correlation_heatmap` | All correlations with Removal sorted by \|r\|, top 5 strongest feature pairs overall |
+| `generate_scatter` | Pearson r, trend direction, axis ranges, group count if colored |
+| `generate_distribution` | mean, std, min, max, skewness direction (histogram) or per-group mean/median with highest/lowest (box plot) |
+| `generate_bar_chart` | Per-group mean and std, highest and lowest group |
+| `generate_time_series` | Per-feature min, max, mean, trend direction (increasing/decreasing/stable) |
+| `generate_model_plots` | R², residual stats, top 5 feature importances, 3 largest prediction errors with file names |
+
+Empty-data returns also wrapped in the new format: `{"figure": self._empty_fig(...), "summary": "No data loaded."}`.
+
+### Fix 2: Agent Engine Routing & Formatting (ai/agent.py)
+
+**`_execute_tool` result routing** updated to detect the new format:
+1. `{"figure": ...}` → extract `result["figure"]` for UI StreamChunk (bare Plotly JSON, backwards-compatible)
+2. `{"figures": [...]}` → extract `result["figures"]` for UI StreamChunk
+3. Legacy `{"data": ...}` and `list[dict]` fallbacks retained for safety
+
+**`_format_tool_result` redesign** -- feeds summaries to the LLM:
+- `{"figure": ..., "summary": ...}` → `"[Chart displayed to user]\nData summary:\n{summary}"`
+- `{"figures": ..., "summary": ...}` → `"[N diagnostic charts displayed to user]\nData summary:\n{summary}"`
+- Summary truncated to 1500 chars max to prevent context bloat
+- Legacy formats fall back to `"[Chart displayed to user]"` (no summary)
+
+### Fix 3: Anti-Hallucination System Prompt Rules
+
+Added two new sections to the system prompt:
+
+**Data accuracy rules:**
+- Use ONLY exact numbers from the data summary when discussing charts
+- Never round differently, invent trends, or embellish beyond what the summary states
+- Never describe visual patterns that cannot be verified from the numerical summary
+- Always include the actual r value when stating correlations (e.g., "r=0.55") rather than vague terms
+
+**Smart defaults guidance:**
+- When the user's request is ambiguous, pick reasonable defaults and state what was chosen
+- Example: "I'll use all numerical features for the heatmap"
+
+### Fix 4: Ollama Parameter Optimization
+
+Added explicit LLM parameters (previously all unset, using Ollama defaults):
+
+```python
+_CHAT_OPTIONS = {"temperature": 0.2, "num_ctx": 16384, "num_predict": 4096}
+```
+
+| Parameter | Previous | New | Rationale |
+|-----------|----------|-----|-----------|
+| `temperature` | ~0.7-0.8 (default) | 0.2 | Reduces creativity/randomness; makes the model stick to provided data rather than embellishing. Key factor in reducing hallucination. |
+| `num_ctx` | unset (model default) | 16384 | Explicitly sets context window. Qwen3.5 supports 256K but 16K balances memory usage with practical needs. |
+| `num_predict` | unset | 4096 | Prevents runaway generation. Agent responses rarely exceed 1-2K tokens. |
+
+### Fix 5: Conversation History Limit Increased
+
+Changed `max_chars` in `_prune_history()` from 24,000 to 48,000. The old limit (~6K tokens) was overly conservative and could prune important tool results from recent turns. The new limit (~12K tokens) fits comfortably within the 16K context window while preserving more conversation history, especially important now that chart summaries add ~300-800 chars per tool result.
+
+### Files Modified
+
+| File | Changes |
+|------|---------|
+| `ai/tools.py` | Added `import itertools`. All 6 chart methods return `{"figure": ..., "summary": ...}` instead of bare Plotly JSON. Added summary extraction logic (~80 new lines). Updated empty-data returns. |
+| `ai/agent.py` | Added `_CHAT_OPTIONS` constant. Updated `client.chat()` to pass `options=_CHAT_OPTIONS`. Added "Data accuracy rules" and smart-defaults guidance to system prompt (~10 lines). Redesigned `_execute_tool` detection (~8 lines) and `_format_tool_result` (~15 lines) for new format with legacy fallbacks. Increased `max_chars` from 24,000 to 48,000. |
+
+**No changes to:** `ai/callbacks_agent.py`, `ai/automl.py`, `ai/ollama_manager.py`. The UI pipeline is unaffected because `_execute_tool` extracts `result["figure"]` before pushing to the StreamChunk queue -- callbacks receive the same bare Plotly JSON as before.
+
+### Design Decisions Discussed But Not Implemented
+
+- **Context window sizing for RTX 5070 Ti (16 GB VRAM):** Analysis showed 32K tokens would be comfortably handled by the hardware. Currently set to 16K which is sufficient for the agent's conversation patterns (typical 5-turn chat uses ~2,200 tokens, heavy 10-turn session ~5,300 tokens). Can be bumped to 32K if users report the agent "forgetting" earlier conversation.
+- **Coupling pruning limit to num_ctx:** The `max_chars` and `num_ctx` are currently independent constants. If `num_ctx` changes, `max_chars` should be updated proportionally. A derived formula was discussed but not yet implemented.
