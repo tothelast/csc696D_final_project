@@ -7,7 +7,9 @@ suggestion chips, and rendering charts inline.
 import logging
 from queue import Empty
 
-from dash import Input, Output, State, callback_context, dcc, html, no_update
+import json
+
+from dash import ALL, Input, Output, State, callback_context, dcc, html, no_update
 
 from ai.agent import AgentEngine
 from dashboard.constants import (
@@ -35,6 +37,14 @@ def _props(c) -> dict:
     if isinstance(c, dict):
         return c.get('props', {}) or {}
     return {}
+
+
+def _extract_chart_title(fig_json: dict) -> str:
+    """Extract a human-readable title from a Plotly figure JSON."""
+    title = fig_json.get('layout', {}).get('title', '')
+    if isinstance(title, dict):
+        return title.get('text', '') or ''
+    return str(title) if title else ''
 
 
 _TOOL_LABELS = {
@@ -168,7 +178,8 @@ def register_agent_callbacks(app, data_manager, agent_engine: AgentEngine):
          Output('agent-model-badge', 'className'),
          Output('agent-suggestions', 'style'),
          Output('agent-chart-history', 'data', allow_duplicate=True),
-         Output('agent-chart-index', 'data', allow_duplicate=True),
+         Output('agent-open-tabs', 'data', allow_duplicate=True),
+         Output('agent-active-tab', 'data', allow_duplicate=True),
          Output('agent-automl-trained', 'data', allow_duplicate=True),
          Output('agent-pred-prefill', 'data', allow_duplicate=True)],
         [Input('agent-poll-interval', 'n_intervals')],
@@ -176,14 +187,14 @@ def register_agent_callbacks(app, data_manager, agent_engine: AgentEngine):
          State('agent-pending-message', 'data'),
          State('agent-processing', 'data'),
          State('agent-chart-history', 'data'),
-         State('agent-chart-index', 'data')],
+         State('agent-open-tabs', 'data')],
         prevent_initial_call=True,
     )
     def poll_response(n_intervals, current_children, pending_msg, is_processing,
-                       chart_history, chart_index):
+                       chart_history, open_tabs):
         if not is_processing:
             return (no_update, True, no_update, no_update, no_update, no_update,
-                    no_update, no_update, no_update, no_update)
+                    no_update, no_update, no_update, no_update, no_update)
 
         children = list(current_children) if current_children else []
 
@@ -307,19 +318,26 @@ def register_agent_callbacks(app, data_manager, agent_engine: AgentEngine):
 
         # Route charts to the canvas history store; reference them in chat
         history_out = no_update
-        index_out = no_update
+        tabs_out = no_update
+        active_out = no_update
         if charts:
             history = list(chart_history) if chart_history else []
+            tabs = list(open_tabs) if open_tabs else []
             for chart_data in charts:
                 history.append(chart_data)
+                chart_idx = len(history) - 1
+                title = _extract_chart_title(chart_data)
+                label = title if title else f"Chart {len(history)}"
+                tabs.append({'chart_idx': chart_idx, 'label': label})
                 children.append(
                     html.Div(
-                        f"[Chart {len(history)} generated \u2192]",
+                        f"[{label} \u2192]",
                         className='agent-message system',
                     )
                 )
             history_out = history
-            index_out = len(history) - 1  # jump to newest
+            tabs_out = tabs
+            active_out = f"chart-{len(history) - 1}"  # jump to newest
 
         # Handle errors
         if error_msg:
@@ -367,13 +385,14 @@ def register_agent_callbacks(app, data_manager, agent_engine: AgentEngine):
                 model_class,
                 {'display': 'none'},  # hide suggestions after first message
                 history_out,
-                index_out,
+                tabs_out,
+                active_out,
                 trained_out,
                 prefill_out,
             )
 
         return (children, no_update, no_update, no_update, no_update, no_update,
-                history_out, index_out, trained_out, prefill_out)
+                history_out, tabs_out, active_out, trained_out, prefill_out)
 
     # == Callback 3: Tab activation — greeting ==============================
     @app.callback(
@@ -428,72 +447,140 @@ def register_agent_callbacks(app, data_manager, agent_engine: AgentEngine):
 
         return children, data_badge, ollama_text, ollama_class
 
-    # == Callback 4: Canvas navigation (prev / next) ========================
+    # == Callback 4: Render tab bar ==========================================
     @app.callback(
-        Output('agent-chart-index', 'data', allow_duplicate=True),
-        [Input('agent-canvas-prev', 'n_clicks'),
-         Input('agent-canvas-next', 'n_clicks')],
-        [State('agent-chart-index', 'data'),
-         State('agent-chart-history', 'data')],
-        prevent_initial_call=True,
-    )
-    def navigate_canvas(prev_clicks, next_clicks, index, history):
-        ctx = callback_context
-        if not ctx.triggered or not history:
-            return no_update
-
-        trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
-        idx = index if index is not None else -1
-
-        if trigger_id == 'agent-canvas-prev':
-            return max(0, idx - 1)
-        if trigger_id == 'agent-canvas-next':
-            return min(len(history) - 1, idx + 1)
-        return no_update
-
-    # == Callback 5: Canvas render ==========================================
-    @app.callback(
-        [Output('agent-canvas-graph', 'figure'),
-         Output('agent-canvas-graph', 'style'),
-         Output('agent-canvas-empty', 'style'),
-         Output('agent-canvas-counter', 'children'),
-         Output('agent-canvas-prev', 'disabled'),
-         Output('agent-canvas-next', 'disabled')],
-        [Input('agent-chart-history', 'data'),
-         Input('agent-chart-index', 'data')],
+        Output('agent-tab-bar', 'children'),
+        [Input('agent-open-tabs', 'data'),
+         Input('agent-active-tab', 'data')],
         prevent_initial_call=False,
     )
-    def render_canvas(history, index):
-        history = history or []
-        total = len(history)
-
-        graph_visible = {'height': '100%', 'width': '100%', 'display': 'block'}
-        graph_hidden = {'height': '100%', 'width': '100%', 'display': 'none'}
-        empty_visible = {}  # use CSS defaults
-        empty_hidden = {'display': 'none'}
-
-        if total == 0:
-            return (
-                {'data': [], 'layout': {}},
-                graph_hidden,
-                empty_visible,
-                "0 / 0",
-                True,
-                True,
+    def render_tab_bar(open_tabs, active_tab):
+        active = active_tab or 'predict'
+        tabs = [
+            html.Div(
+                "Predict Removal",
+                id='agent-tab-predict',
+                className='agent-tab active' if active == 'predict' else 'agent-tab',
+                n_clicks=0,
+            ),
+        ]
+        for tab_info in (open_tabs or []):
+            chart_idx = tab_info['chart_idx']
+            tab_id = f'chart-{chart_idx}'
+            is_active = active == tab_id
+            tabs.append(
+                html.Div(className='agent-tab-wrapper', children=[
+                    html.Div(
+                        tab_info['label'],
+                        id={'type': 'agent-chart-tab', 'index': chart_idx},
+                        className='agent-tab active' if is_active else 'agent-tab',
+                        n_clicks=0,
+                    ),
+                    html.Button(
+                        '\u00d7',
+                        id={'type': 'agent-chart-tab-close', 'index': chart_idx},
+                        className='agent-tab-close',
+                        n_clicks=0,
+                    ),
+                ])
             )
+        return tabs
 
-        idx = index if index is not None else -1
-        if idx < 0 or idx >= total:
-            idx = total - 1
+    # == Callback 5: Render tab content =====================================
+    @app.callback(
+        [Output('agent-pred-panel', 'style'),
+         Output('agent-chart-panel', 'style'),
+         Output('agent-canvas-graph', 'figure')],
+        [Input('agent-active-tab', 'data')],
+        [State('agent-chart-history', 'data')],
+        prevent_initial_call=False,
+    )
+    def render_tab_content(active_tab, chart_history):
+        if active_tab == 'predict' or not active_tab:
+            return {}, {'display': 'none'}, no_update
+
+        try:
+            chart_idx = int(active_tab.split('-', 1)[1])
+        except (ValueError, IndexError):
+            return {}, {'display': 'none'}, no_update
+
+        history = chart_history or []
+        if chart_idx < 0 or chart_idx >= len(history):
+            return {}, {'display': 'none'}, no_update
+
+        # Patch the figure to autosize into its container instead of
+        # using a fixed pixel width/height baked into the JSON.
+        fig = dict(history[chart_idx])
+        layout = dict(fig.get('layout', {}))
+        layout['autosize'] = True
+        layout.pop('width', None)
+        layout.pop('height', None)
+        fig['layout'] = layout
 
         return (
-            history[idx],
-            graph_visible,
-            empty_hidden,
-            f"{idx + 1} / {total}",
-            idx == 0,
-            idx == total - 1,
+            {'display': 'none'},
+            {},  # use CSS defaults (flex column, fills container)
+            fig,
         )
+
+    # == Callback 5a: Switch to Predict tab =================================
+    @app.callback(
+        Output('agent-active-tab', 'data', allow_duplicate=True),
+        Input('agent-tab-predict', 'n_clicks'),
+        prevent_initial_call=True,
+    )
+    def switch_to_predict(n):
+        if not n:
+            return no_update
+        return 'predict'
+
+    # == Callback 5b: Switch to a chart tab =================================
+    @app.callback(
+        Output('agent-active-tab', 'data', allow_duplicate=True),
+        Input({'type': 'agent-chart-tab', 'index': ALL}, 'n_clicks'),
+        prevent_initial_call=True,
+    )
+    def switch_to_chart(n_clicks_list):
+        ctx = callback_context
+        if not ctx.triggered or not n_clicks_list or not any(n_clicks_list):
+            return no_update
+        triggered = ctx.triggered[0]
+        idx_dict = json.loads(triggered['prop_id'].split('.')[0])
+        return f"chart-{idx_dict['index']}"
+
+    # == Callback 5c: Close a chart tab =====================================
+    @app.callback(
+        [Output('agent-open-tabs', 'data', allow_duplicate=True),
+         Output('agent-active-tab', 'data', allow_duplicate=True)],
+        Input({'type': 'agent-chart-tab-close', 'index': ALL}, 'n_clicks'),
+        [State('agent-open-tabs', 'data'),
+         State('agent-active-tab', 'data')],
+        prevent_initial_call=True,
+    )
+    def close_chart_tab(n_clicks_list, open_tabs, active_tab):
+        ctx = callback_context
+        if not ctx.triggered or not n_clicks_list or not any(n_clicks_list):
+            return no_update, no_update
+
+        idx_dict = json.loads(ctx.triggered[0]['prop_id'].split('.')[0])
+        closing_idx = idx_dict['index']
+        closing_tab_id = f"chart-{closing_idx}"
+
+        new_tabs = [t for t in (open_tabs or []) if t['chart_idx'] != closing_idx]
+
+        new_active = active_tab
+        if active_tab == closing_tab_id:
+            if new_tabs:
+                old_pos = next(
+                    (i for i, t in enumerate(open_tabs or [])
+                     if t['chart_idx'] == closing_idx), 0
+                )
+                pick = min(old_pos, len(new_tabs) - 1)
+                new_active = f"chart-{new_tabs[pick]['chart_idx']}"
+            else:
+                new_active = 'predict'
+
+        return new_tabs, new_active
 
     # == Sync trained flag on tab activation ================================
     # When the Dash page reloads (e.g. user leaves to the Landing/Project
@@ -514,7 +601,7 @@ def register_agent_callbacks(app, data_manager, agent_engine: AgentEngine):
             return True
         return no_update
 
-    # == Callback 6: Reveal prediction form + populate options on train =====
+    # == Callback 6: Populate prediction form options on train ================
     _cat_option_outputs = [
         Output(_feature_id(f), 'options') for f in PREDICTION_CATEGORICAL_FEATURES
     ]
@@ -523,30 +610,26 @@ def register_agent_callbacks(app, data_manager, agent_engine: AgentEngine):
         [Output('agent-pred-form', 'style'),
          Output('agent-pred-empty', 'style'),
          *_cat_option_outputs],
-        Input('agent-automl-trained', 'data'),
+        [Input('agent-automl-trained', 'data'),
+         Input('analysis-tabs', 'value')],
         prevent_initial_call=False,
     )
-    def reveal_prediction_form(trained):
-        """Show the form and populate each dropdown from training categories
-        when the agent finishes training a model. Generalised: iterates
-        PREDICTION_CATEGORICAL_FEATURES so adding a column only requires
-        updating dashboard/constants.py."""
-        if not trained or _engine.automl_manager.automl is None:
-            hidden_form = {'display': 'none'}
-            shown_empty = {}
-            empty_opts = [[] for _ in PREDICTION_CATEGORICAL_FEATURES]
-            return (hidden_form, shown_empty, *empty_opts)
+    def populate_prediction_options(trained, tab_value):
+        """Toggle form visibility and populate dropdowns.
 
-        cat_opts = _engine.automl_manager.get_category_options()
-        options_per_feature = []
-        for feat in PREDICTION_CATEGORICAL_FEATURES:
-            vals = cat_opts.get(feat, [])
-            options_per_feature.append([{'label': v, 'value': v} for v in vals])
+        Before training: show the empty-state message, hide the form.
+        After training: show the form with training categories."""
+        if trained and _engine.automl_manager.automl is not None:
+            cat_opts = _engine.automl_manager.get_category_options()
+            options = [
+                [{'label': v, 'value': v} for v in cat_opts.get(feat, [])]
+                for feat in PREDICTION_CATEGORICAL_FEATURES
+            ]
+            return ({'display': 'flex', 'flexDirection': 'column', 'gap': '8px'},
+                    {'display': 'none'}, *options)
 
-        shown_form = {'display': 'flex', 'flexDirection': 'column', 'gap': '8px',
-                      'paddingTop': '8px'}
-        hidden_empty = {'display': 'none'}
-        return (shown_form, hidden_empty, *options_per_feature)
+        # Not trained — hide the form, show the empty-state message
+        return ({'display': 'none'}, {}, *[[] for _ in PREDICTION_CATEGORICAL_FEATURES])
 
     # == Callback 7: Apply agent-supplied prefill to form fields ============
     _all_value_outputs = (
@@ -557,25 +640,25 @@ def register_agent_callbacks(app, data_manager, agent_engine: AgentEngine):
     )
 
     @app.callback(
-        _all_value_outputs,
+        [*_all_value_outputs,
+         Output('agent-active-tab', 'data', allow_duplicate=True)],
         Input('agent-pred-prefill', 'data'),
         prevent_initial_call=True,
     )
     def apply_prefill(prefill):
         """When the LLM's open_prediction_form tool emits a prefill payload,
-        drop each provided value into the corresponding form field; leave
-        unprovided fields untouched."""
+        drop each provided value into the corresponding form field and switch
+        to the Predict tab so the user sees it."""
+        n_fields = len(PREDICTION_CATEGORICAL_FEATURES) + len(PREDICTION_NUMERICAL_FEATURES)
         if not prefill:
-            return [no_update] * (
-                len(PREDICTION_CATEGORICAL_FEATURES) + len(PREDICTION_NUMERICAL_FEATURES)
-            )
+            return [no_update] * n_fields + [no_update]
         values = []
         for feat in PREDICTION_CATEGORICAL_FEATURES + PREDICTION_NUMERICAL_FEATURES:
             if feat in prefill and prefill[feat] is not None:
                 values.append(prefill[feat])
             else:
                 values.append(no_update)
-        return values
+        return values + ['predict']
 
     # == Callback 8: Compute prediction when user clicks the canvas Predict =
     _all_value_states = (
@@ -598,7 +681,7 @@ def register_agent_callbacks(app, data_manager, agent_engine: AgentEngine):
         if not n_clicks:
             return no_update
         if _engine.automl_manager.automl is None:
-            return html.P("Train a model first.",
+            return html.P("Ask the agent to build the model first.",
                            style={'color': '#707070', 'fontSize': '13px'})
         if _engine.automl_manager.metrics is None:
             # AutoML() instantiated but fit() / nested-CV still running.

@@ -1015,88 +1015,145 @@ INDEX_STRING = '''
             .agent-canvas-column {
                 flex: 1;
                 display: flex;
-                flex-direction: row;
+                flex-direction: column;
                 background: #1e1e1e;
                 padding: 0;
                 min-width: 0;
+                overflow: hidden;
             }
-            .agent-canvas-form-section {
-                flex: 0 0 50%;
+
+            /* ── Tab bar ──────────────────────────────────────────────── */
+            .agent-tab-bar {
                 display: flex;
-                flex-direction: column;
-                border-right: 1px solid #404040;
-                padding: 12px;
-                overflow-y: auto;
-                min-width: 0;
+                flex-direction: row;
+                gap: 0;
+                border-bottom: 1px solid #3d3d3d;
+                background: #2a2a2a;
+                overflow-x: auto;
+                overflow-y: hidden;
+                min-height: 36px;
+                flex-shrink: 0;
+                scrollbar-width: thin;
+                scrollbar-color: #4a4a4a transparent;
             }
-            .agent-canvas-charts-section {
-                flex: 0 0 50%;
+            .agent-tab-bar::-webkit-scrollbar {
+                height: 4px;
+            }
+            .agent-tab-bar::-webkit-scrollbar-thumb {
+                background: #4a4a4a;
+                border-radius: 2px;
+            }
+            .agent-tab {
+                padding: 8px 16px;
+                font-size: 12px;
+                font-weight: 600;
+                color: #a0a0a0;
+                background: transparent;
+                border: none;
+                border-bottom: 2px solid transparent;
+                cursor: pointer;
+                white-space: nowrap;
+                flex-shrink: 0;
+                transition: color 0.15s, border-color 0.15s;
+            }
+            .agent-tab:hover {
+                color: #e0e0e0;
+                background: #353535;
+            }
+            .agent-tab.active {
+                color: #3b82f6;
+                border-bottom-color: #3b82f6;
+            }
+            .agent-tab-wrapper {
                 display: flex;
-                flex-direction: column;
-                padding: 12px;
-                min-width: 0;
+                align-items: center;
+                flex-shrink: 0;
             }
-            /* When the empty-state placeholder lives inside the form section
-               it should flow in the flex column, not absolutely overlay it. */
-            .agent-canvas-form-section .agent-canvas-empty {
-                position: static;
+            .agent-tab-close {
+                background: none;
+                border: none;
+                color: #707070;
+                font-size: 14px;
+                line-height: 1;
+                padding: 2px 6px;
+                margin-left: -8px;
+                margin-right: 4px;
+                cursor: pointer;
+                border-radius: 4px;
+            }
+            .agent-tab-close:hover {
+                color: #ef4444;
+                background: #353535;
+            }
+
+            /* ── Tab content ──────────────────────────────────────────── */
+            .agent-tab-content {
                 flex: 1;
-                padding: 20px;
+                min-height: 0;
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+            }
+            .agent-pred-panel {
+                padding: 16px;
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+                flex: 1;
+                overflow-y: auto;
+            }
+            .agent-pred-empty {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
                 text-align: center;
+                color: #888888;
             }
             #agent-pred-form {
                 display: flex;
                 flex-direction: column;
                 gap: 8px;
-                padding-top: 8px;
             }
-            .agent-canvas-header {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                padding: 4px 8px 10px;
-                border-bottom: 1px solid #3d3d3d;
-                font-size: 13px;
-                color: #a0a0a0;
-                font-weight: 600;
-            }
-            .agent-canvas-body {
+            .agent-chart-panel {
                 flex: 1;
-                position: relative;
                 min-height: 0;
-            }
-            .agent-canvas-empty {
-                position: absolute;
-                inset: 0;
+                min-width: 0;
+                padding: 8px;
                 display: flex;
-                align-items: center;
-                justify-content: center;
-                color: #666666;
-                font-size: 13px;
-                font-style: italic;
+                flex-direction: column;
+                overflow: hidden;
             }
-            .agent-canvas-footer {
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                gap: 12px;
-                padding: 8px 0 0;
+            /* dcc.Graph wrapper → Plotly internals: every layer must
+               stretch to fill and never exceed its parent. */
+            .agent-chart-panel > div,
+            .agent-chart-panel .dash-graph {
+                flex: 1;
+                min-height: 0;
+                min-width: 0;
+                width: 100%;
+                height: 100%;
             }
-            .agent-canvas-nav-btn {
-                background: #353535;
-                border: 1px solid #404040;
-                color: #e0e0e0;
-                border-radius: 6px;
-                padding: 6px 14px;
-                font-size: 12px;
-                cursor: pointer;
+            #agent-canvas-graph {
+                width: 100% !important;
+                height: 100% !important;
             }
-            .agent-canvas-nav-btn:hover:not(:disabled) {
-                border-color: #3b82f6;
+            .agent-chart-panel .js-plotly-plot {
+                width: 100% !important;
+                height: 100% !important;
             }
-            .agent-canvas-nav-btn:disabled {
-                opacity: 0.4;
-                cursor: not-allowed;
+            .agent-chart-panel .plot-container {
+                width: 100% !important;
+                height: 100% !important;
+            }
+            .agent-chart-panel .svg-container {
+                width: 100% !important;
+                height: 100% !important;
+            }
+            .agent-chart-panel .main-svg {
+                width: 100% !important;
+                height: 100% !important;
             }
         </style>
     </head>
