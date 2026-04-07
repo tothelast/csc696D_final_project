@@ -399,20 +399,31 @@ def register_agent_callbacks(app, data_manager, agent_engine: AgentEngine):
         [Output('agent-chat-area', 'children', allow_duplicate=True),
          Output('agent-data-badge', 'children'),
          Output('agent-ollama-badge', 'children'),
-         Output('agent-ollama-badge', 'className')],
+         Output('agent-ollama-badge', 'className'),
+         Output('agent-model-badge', 'children', allow_duplicate=True),
+         Output('agent-model-badge', 'className', allow_duplicate=True)],
         Input('analysis-tabs', 'value'),
         State('agent-chat-area', 'children'),
         prevent_initial_call=True,
     )
     def on_tab_activate(tab_value, current_children):
         if tab_value != 'agent':
-            return no_update, no_update, no_update, no_update
+            return no_update, no_update, no_update, no_update, no_update, no_update
 
         df = data_manager.get_all_data()
         file_count = len(df)
         removal_count = int((df.get('Removal', 0) > 0).sum()) if not df.empty else 0
 
         greeting = _engine.get_greeting(file_count, removal_count)
+
+        # Restore model badge from server-side state (survives page reloads)
+        if _engine and _engine.automl_manager.metrics:
+            m = _engine.automl_manager.metrics
+            model_text = f"{m['best_model']} (R²={m['r2']:.3f})"
+            model_class = "agent-status-badge active"
+        else:
+            model_text = no_update
+            model_class = no_update
 
         # Dedup guard: if the greeting (or any assistant message containing
         # that exact text) is already in the chat, don't re-append it. This
@@ -421,10 +432,10 @@ def register_agent_callbacks(app, data_manager, agent_engine: AgentEngine):
         if current_children:
             for c in current_children:
                 if _extract_text(c) == greeting:
-                    return no_update, no_update, no_update, no_update
+                    return no_update, no_update, no_update, no_update, model_text, model_class
             # Chat is non-empty but doesn't contain the greeting — still skip,
             # matching prior "only greet once" behaviour.
-            return no_update, no_update, no_update, no_update
+            return no_update, no_update, no_update, no_update, model_text, model_class
 
         children = [_assistant_msg(greeting)]
 
@@ -445,7 +456,7 @@ def register_agent_callbacks(app, data_manager, agent_engine: AgentEngine):
             ollama_text = "Unavailable"
             ollama_class = "agent-status-badge"
 
-        return children, data_badge, ollama_text, ollama_class
+        return children, data_badge, ollama_text, ollama_class, model_text, model_class
 
     # == Callback 4: Render tab bar ==========================================
     @app.callback(
