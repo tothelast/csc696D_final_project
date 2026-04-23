@@ -13,7 +13,7 @@ import pandas as pd
 import plotly.graph_objects as go
 
 from dashboard.constants import (
-    ANALYSIS_FEATURES,
+    CORRELATION_FEATURES,
     CATEGORICAL_FEATURES,
     PREDICTION_CATEGORICAL_FEATURES,
     PREDICTION_NUMERICAL_FEATURES,
@@ -590,30 +590,55 @@ class AgentTools:
         return {"figure": fig.to_plotly_json(), "summary": "\n".join(summary_lines)}
 
     def generate_correlation_heatmap(self, features: list[str] = None) -> dict:
-        """Generate a correlation matrix heatmap for numerical features.
+        """Generate a Pearson correlation matrix heatmap for numerical features.
 
-        IMPORTANT: omit the `features` parameter entirely to include ALL
-        numerical features (COF, Fz, Var Fz, Mean Temp, Init Temp, High Temp,
-        Removal, WIWNU, Mean Pressure, Mean Velocity, P.V, COF.P.V,
-        Sommerfeld, Pressure PSI, Polish Time, Removal Rate). Passing an
-        empty list or a partial list will limit the heatmap to only those
-        columns — this is almost never what the user wants.
+        The default feature set covers every measured output PLUS the two
+        controllable process parameters (Pressure PSI, Polish Time) — these
+        matter physically via Preston's equation and engineers almost always
+        want to see them in the matrix.
+
+        Any column that is constant across the dataset is dropped automatically
+        (its correlation is mathematically undefined). The dropped names are
+        reported in the data summary so you can tell the user why they are
+        missing.
 
         Args:
-            features: Optional list of feature names. Defaults to ALL numerical
-                analysis features when omitted or empty.
+            features: Optional list of feature names. Omit (or pass an empty
+                list) to use the default set. Explicit lists are filtered the
+                same way — constant columns are always dropped.
 
         Returns:
-            Plotly figure as a JSON-serializable dictionary.
+            Plotly figure as a JSON-serializable dictionary, plus a text
+            summary listing the strongest correlations with Removal, the top
+            pairwise correlations, and any excluded constant features.
         """
         df = self.dm.get_all_data()
         if df.empty:
             return {"figure": self._empty_fig("No data loaded."), "summary": "No data loaded."}
 
         if not features:  # None or empty list → use all defaults
-            features = [f for f in ANALYSIS_FEATURES if f in df.columns]
+            features = [f for f in CORRELATION_FEATURES if f in df.columns]
+        else:
+            features = [f for f in features if f in df.columns]
 
         numeric_df = df[features].select_dtypes(include=[np.number]).dropna(axis=1, how="all")
+
+        # Drop constant columns — correlation is undefined when σ = 0.
+        constant_cols = [c for c in numeric_df.columns
+                         if numeric_df[c].nunique(dropna=True) <= 1]
+        if constant_cols:
+            numeric_df = numeric_df.drop(columns=constant_cols)
+
+        if numeric_df.shape[1] < 2:
+            return {
+                "figure": self._empty_fig("Not enough varying numerical features to correlate."),
+                "summary": (
+                    "Correlation heatmap could not be built: fewer than two "
+                    "varying features remained after dropping constants "
+                    f"({', '.join(constant_cols) or 'none'})."
+                ),
+            }
+
         corr = numeric_df.corr()
 
         fig = go.Figure(data=go.Heatmap(
@@ -627,8 +652,12 @@ class AgentTools:
             textfont={"size": 10},
         ))
 
-        # Build a text summary of key correlations for the LLM.
         summary_lines = []
+        if constant_cols:
+            summary_lines.append(
+                f"Excluded (constant in this dataset): {', '.join(constant_cols)}"
+            )
+
         if "Removal" in corr.columns:
             removal_corr = corr["Removal"].drop("Removal").sort_values(
                 key=abs, ascending=False

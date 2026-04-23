@@ -12,6 +12,13 @@ ANALYSIS_FEATURES = [
     'Mean Pressure', 'Mean Velocity', 'P.V', 'COF.P.V', 'Sommerfeld', 'Removal Rate'
 ]
 
+# Features for correlation analysis. Extends ANALYSIS_FEATURES with the
+# controllable process parameters (pressure, polish time) because Preston's
+# equation (MRR ∝ P·V·t) makes them the correlations engineers care about
+# most. Kept separate from ANALYSIS_FEATURES so PCA / K-Means (which cannot
+# tolerate zero-variance columns through StandardScaler) stay safe.
+CORRELATION_FEATURES = ANALYSIS_FEATURES + ['Pressure PSI', 'Polish Time']
+
 # Feature explorer axis options with full labels
 FEATURE_AXIS_OPTIONS = [
     {'label': 'Coefficient of Friction', 'value': 'COF'},
