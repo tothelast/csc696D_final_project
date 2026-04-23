@@ -879,3 +879,37 @@ class AgentTools:
             self.generate_time_series,
             self.generate_model_plots,
         ]
+
+
+def build_tool_catalog() -> list[dict]:
+    """UI-ready entries for every registered capability, in display order.
+
+    Joins the live registration list from ``AgentTools.get_all_tools`` with
+    user-facing copy from ``ai.tool_ui.TOOL_UI``. Capabilities without a
+    ``TOOL_UI`` entry fall through to the ``other`` category with a
+    humanized name and no example prompts — graceful, never broken.
+    """
+    from ai.tool_ui import TOOL_UI, CATEGORY_ORDER
+
+    # AgentTools(None, None) is safe: get_all_tools only returns bound method
+    # references; it never touches self.dm or self.ml. If that changes, swap
+    # to iterating TOOL_UI.keys() and pulling docstrings via getattr(AgentTools).
+    registered = AgentTools(None, None).get_all_tools()
+    order = {c: i for i, c in enumerate(CATEGORY_ORDER)}
+    entries = []
+    for fn in registered:
+        ui = TOOL_UI.get(fn.__name__)
+        if ui:
+            entries.append({"name": fn.__name__, **ui})
+        else:
+            doc = (fn.__doc__ or "").strip()
+            entries.append({
+                "name": fn.__name__,
+                "category": "other",
+                "title": fn.__name__.replace("_", " ").capitalize(),
+                "short": doc.split("\n", 1)[0] if doc else "",
+                "long":  doc,
+                "examples": [],
+            })
+    entries.sort(key=lambda e: order.get(e["category"], 99))
+    return entries

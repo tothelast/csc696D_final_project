@@ -620,6 +620,114 @@ def build_prediction_tab():
     ])
 
 
+def _build_preview_item(entry: dict):
+    """One hidden description block for the persistent preview pane.
+
+    Shown only when its matching card is hovered, via a CSS :has() rule
+    in dashboard/styles.py. Content is plain user-language: a title line,
+    the long description, and (if present) a 'Try asking:' line with
+    the first example prompt.
+    """
+    body = [
+        html.Div(entry['title'], className='agent-help-preview-title'),
+        html.Div(entry['long'], className='agent-help-preview-desc'),
+    ]
+    examples = entry.get('examples') or []
+    if examples:
+        body.append(html.Div(
+            className='agent-help-preview-example',
+            children=[
+                html.Span('Try asking: ', className='agent-help-preview-label'),
+                html.Span(f'"{examples[0]}"'),
+            ],
+        ))
+    return html.Div(
+        className='agent-help-preview-item',
+        **{'data-name': entry['name']},
+        children=body,
+    )
+
+
+def build_agent_help_panel():
+    """Collapsible 'How can I help?' panel for the AI Agent tab.
+
+    Structure:
+        .agent-help-panel
+        ├── <button.agent-help-toggle>
+        └── .agent-help-body (overflow-y: auto)
+            ├── .agent-help-preview (position: sticky — stays pinned at
+            │   │                     the top of the scroll area; never
+            │   │                     an absolutely-positioned descendant
+            │   │                     so the body's overflow cannot clip
+            │   │                     it, which was the previous bug.)
+            │   ├── .agent-help-preview-default
+            │   └── .agent-help-preview-item × N (data-name=…)
+            └── .agent-help-section × M
+                ├── .agent-help-section-title
+                └── .agent-help-grid
+                    └── .agent-help-card × K (data-name=…)
+
+    Hover behavior is entirely CSS-driven (see dashboard/styles.py): a
+    :has() rule per tool name swaps which preview item is visible when
+    its card is hovered. No popovers, no moving tooltips.
+    """
+    from ai.tools import build_tool_catalog
+    from ai.tool_ui import CATEGORY_ORDER, CATEGORY_TITLES
+
+    entries = build_tool_catalog()
+    total = len(entries)
+
+    by_cat: dict[str, list[dict]] = {c: [] for c in CATEGORY_ORDER}
+    for e in entries:
+        by_cat.setdefault(e["category"], []).append(e)
+
+    sections = []
+    for cat in CATEGORY_ORDER:
+        items = by_cat.get(cat, [])
+        if not items:
+            continue
+        cards = []
+        for e in items:
+            cards.append(html.Div(
+                className='agent-help-card',
+                **{'data-name': e['name']},
+                children=[
+                    html.Span(e['title'], className='agent-help-card-title'),
+                    html.Span(e['short'], className='agent-help-card-short'),
+                ],
+            ))
+        sections.append(html.Div(className='agent-help-section', children=[
+            html.Div(CATEGORY_TITLES[cat], className='agent-help-section-title'),
+            html.Div(className='agent-help-grid', children=cards),
+        ]))
+
+    preview = html.Div(className='agent-help-preview', children=[
+        html.Div(
+            'Hover over a capability for more details on how to use it',
+            className='agent-help-preview-default',
+        ),
+        *[_build_preview_item(e) for e in entries],
+    ])
+
+    return html.Div(className='agent-help-panel', children=[
+        html.Button(
+            id='agent-help-toggle',
+            className='agent-help-toggle',
+            n_clicks=0,
+            children=[
+                html.Span(className='agent-help-chevron'),
+                html.Span(f'Capabilities ({total})', className='agent-help-toggle-label'),
+            ],
+        ),
+        html.Div(
+            id='agent-help-body',
+            className='agent-help-body',
+            style={'display': 'none'},
+            children=[preview, *sections],
+        ),
+    ])
+
+
 def build_agent_tab():
     """Build the 'AI Agent' tab layout with a chat column and a canvas column."""
     return dcc.Tab(label='AI Agent', value='agent', className='tab', selected_className='tab--selected', children=[
@@ -639,6 +747,9 @@ def build_agent_tab():
                     html.Span(id='agent-ollama-badge', className='agent-status-badge',
                                children='Connecting...'),
                 ]),
+
+                # Collapsible capabilities panel
+                build_agent_help_panel(),
 
                 # Chat message area
                 html.Div(id='agent-chat-area', className='agent-chat-area', children=[]),

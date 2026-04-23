@@ -762,6 +762,20 @@ def register_agent_callbacks(app, data_manager, agent_engine: AgentEngine):
             )
         return html.Div(children)
 
+    # == Callback: toggle the "Capabilities" panel =======================
+    @app.callback(
+        [Output('agent-help-body', 'style'),
+         Output('agent-help-toggle', 'className')],
+        Input('agent-help-toggle', 'n_clicks'),
+        prevent_initial_call=True,
+    )
+    def toggle_help_panel(n_clicks):
+        # Odd click counts = expanded; no separate store needed.
+        expanded = bool(n_clicks) and (n_clicks % 2 == 1)
+        style = {'display': 'block'} if expanded else {'display': 'none'}
+        klass = 'agent-help-toggle expanded' if expanded else 'agent-help-toggle'
+        return style, klass
+
 
 # ---------------------------------------------------------------------------
 # Helpers for inspecting Dash component trees

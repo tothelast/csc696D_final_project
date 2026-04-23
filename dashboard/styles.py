@@ -823,6 +823,156 @@ INDEX_STRING = '''
                 background: #1a3a1a;
                 color: #22c55e;
             }
+            /* ── "How can I help?" panel ────────────────────────────── */
+            .agent-help-panel {
+                border-bottom: 1px solid #3d3d3d;
+                background: #1f1f1f;
+            }
+            .agent-help-toggle {
+                all: unset;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                padding: 8px 16px;
+                width: 100%;
+                box-sizing: border-box;
+                color: #a0a0a0;
+                font-size: 12px;
+                cursor: pointer;
+                user-select: none;
+            }
+            .agent-help-toggle:hover {
+                color: #e0e0e0;
+                background: #242424;
+            }
+            .agent-help-chevron::before {
+                /* Literal character, not a CSS \\XXXX escape: the surrounding
+                   Python string would otherwise interpret "\\25" as an octal
+                   escape (U+0015) and CSS would only receive the trailing
+                   "B8" as visible text. */
+                content: '▸';
+                display: inline-block;
+                font-size: 10px;
+                transition: transform 0.15s ease;
+            }
+            .agent-help-toggle.expanded .agent-help-chevron::before {
+                transform: rotate(90deg);
+            }
+            .agent-help-body {
+                padding: 14px 16px 10px;
+                /* Grows with the viewport so more cards are visible without
+                   scrolling on tall screens; capped so the chat area never
+                   gets squeezed on short ones. */
+                max-height: min(55vh, 480px);
+                overflow-y: auto;
+            }
+            .agent-help-section { margin-bottom: 14px; }
+            .agent-help-section:last-child { margin-bottom: 0; }
+            .agent-help-section-title {
+                font-size: 10px;
+                font-weight: 700;
+                letter-spacing: 1px;
+                text-transform: uppercase;
+                color: #707070;
+                margin-bottom: 8px;
+            }
+            .agent-help-grid {
+                display: grid;
+                /* Packs 2 columns at ~360 px chat width, 3+ when the
+                   window is wide. Lower min than 190 px so narrow windows
+                   don't force a single jumbo column. */
+                grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+                gap: 8px;
+            }
+            .agent-help-card {
+                background: #2a2a2a;
+                border: 1px solid #3d3d3d;
+                border-radius: 6px;
+                padding: 10px 12px;
+                cursor: default;
+                /* No transitions, no transforms, no z-index on hover.
+                   The card does not move, resize, or change stacking on
+                   hover — only border color changes. This eliminates
+                   every possible source of perceived text motion. */
+            }
+            .agent-help-card:hover {
+                border-color: #3b82f6;
+            }
+            .agent-help-card-title {
+                display: block;
+                font-size: 12px;
+                color: #e0e0e0;
+                font-weight: 600;
+            }
+            .agent-help-card-short {
+                display: block;
+                font-size: 11px;
+                color: #888888;
+                margin-top: 3px;
+                line-height: 1.4;
+            }
+            /* ── Persistent preview pane ────────────────────────────────
+               Replaces per-card ::after popovers. A popover was an
+               absolutely-positioned descendant of .agent-help-body; since
+               the body is a scroll container (overflow-y: auto), per the
+               CSS Overflow Module Level 3 the popover was clipped to the
+               body's padding box, which made tooltips for bottom-row cards
+               invisible. The preview pane is a regular flow element that
+               sticks to the top of the body via position: sticky, so it
+               never moves around and never clips. */
+            .agent-help-preview {
+                position: sticky;
+                top: -14px;                  /* cancels body's top padding */
+                background: #181a1d;
+                border: 1px solid #2c323a;
+                border-radius: 6px;
+                padding: 10px 12px;
+                margin-bottom: 14px;
+                min-height: 62px;
+                font-size: 11.5px;
+                line-height: 1.5;
+                color: #c8c8c8;
+                z-index: 2;                  /* above scrolled card content */
+            }
+            .agent-help-preview-default {
+                color: #707070;
+                font-style: italic;
+            }
+            .agent-help-preview-item { display: none; }
+            .agent-help-preview-title {
+                font-size: 12px;
+                font-weight: 600;
+                color: #e0e0e0;
+                margin-bottom: 4px;
+            }
+            .agent-help-preview-desc {
+                color: #c0c0c0;
+            }
+            .agent-help-preview-example {
+                margin-top: 6px;
+                color: #a0a0a0;
+            }
+            .agent-help-preview-label {
+                color: #707070;
+                font-style: italic;
+            }
+            /* Any card hovered → swap the default hint out. */
+            .agent-help-body:has(.agent-help-card:hover) .agent-help-preview-default {
+                display: none;
+            }
+            /* One rule per tool — swaps in the matching preview item.
+               Generated at module load from ai.tool_ui.TOOL_UI so adding
+               a new capability requires zero CSS changes. */
+            {%agent_help_rules%}
+            /* Very narrow windows: shrink card minimum so cards still tile. */
+            @media (max-width: 900px) {
+                .agent-help-grid {
+                    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+                }
+                .agent-help-body {
+                    max-height: min(60vh, 420px);
+                }
+            }
             .agent-chat-area {
                 flex: 1;
                 overflow-y: auto;
@@ -1177,3 +1327,20 @@ INDEX_STRING = '''
     </body>
 </html>
 '''
+
+
+# ── Inject per-tool :has() rules for the "How can I help?" preview pane ──
+# Single source of truth stays in ai.tool_ui.TOOL_UI. Each rule makes the
+# matching .agent-help-preview-item visible when its .agent-help-card is
+# hovered. When a new capability is added to TOOL_UI, its preview rule
+# appears automatically with no CSS changes required here.
+def _build_agent_help_rules() -> str:
+    from ai.tool_ui import TOOL_UI
+    template = (
+        '.agent-help-body:has(.agent-help-card[data-name="{n}"]:hover) '
+        '.agent-help-preview-item[data-name="{n}"] {{ display: block; }}'
+    )
+    return '\n            '.join(template.format(n=name) for name in TOOL_UI)
+
+
+INDEX_STRING = INDEX_STRING.replace('{%agent_help_rules%}', _build_agent_help_rules())
