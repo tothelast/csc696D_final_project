@@ -5,6 +5,7 @@ import logging
 import numpy as np
 import pandas as pd
 from flaml import AutoML
+from sklearn.inspection import permutation_importance
 
 from dashboard.constants import (
     PREDICTION_CATEGORICAL_FEATURES,
@@ -323,41 +324,42 @@ class AutoMLManager:
             return self.metrics["rmse"]
 
     def _extract_importances(self, feature_cols: list[str]) -> dict:
-        """Extract feature importances from the best FLAML model.
+        """Model-agnostic feature importance via permutation on the training set.
 
-        Uses FLAML's built-in ``feature_importances_`` property as the
-        primary source. When the DataTransformer drops constant columns,
-        the importance vector is shorter than ``feature_cols``; in that
-        case we recover the actual post-transform column names from the
-        transformer so labels stay meaningful.
+        Measures the drop in R² when each column is shuffled. Works identically
+        for tree, linear, and histogram-gradient-boosting estimators — unlike
+        FLAML's native ``feature_importances_``, which returns None for
+        ``histgb`` and inflated raw coefficients for ``enet`` / ``lassolars`` /
+        ``sgd``. On the typical CMP dataset (<200 files) this costs <1 s.
+
+        Negative values (shuffling helped — i.e. the feature is pure noise) are
+        clipped to 0 so the bar chart always starts at zero.
         """
-        importances = self.automl.feature_importances_
-        if importances is None:
-            return {col: 0.0 for col in feature_cols}
+        X = self.train_df[feature_cols].copy()
+        for col in PREDICTION_CATEGORICAL_FEATURES:
+            if col in X.columns:
+                X[col] = X[col].astype(self._cat_dtypes[col])
+        y = self.train_df[PREDICTION_TARGET].values
 
-        importances = np.abs(importances)
-
-        # When all features survive the transformer, names align directly.
-        if len(importances) == len(feature_cols):
-            return {col: float(imp) for col, imp in zip(feature_cols, importances)}
-
-        # The transformer dropped constant columns — recover actual names.
-        try:
-            X_sample = self.train_df[feature_cols].head(1).copy()
-            for col in PREDICTION_CATEGORICAL_FEATURES:
-                if col in X_sample.columns:
-                    X_sample[col] = X_sample[col].astype(self._cat_dtypes[col])
-            X_trans = self.automl._transformer.transform(X_sample)
-            if hasattr(X_trans, "columns") and len(X_trans.columns) == len(importances):
-                return {
-                    col: float(imp)
-                    for col, imp in zip(X_trans.columns, importances)
-                }
-        except Exception:
-            pass
-
-        # Last resort — indexed names (should not happen).
-        return {f"feature_{i}": float(v) for i, v in enumerate(importances)}
+        result = permutation_importance(
+            self.automl,
+            X,
+            y,
+            n_repeats=10,
+            random_state=42,
+            scoring="r2",
+            n_jobs=1,
+        )
+        logger.info(
+            "Permutation importance (%s): %s",
+            self.automl.best_estimator,
+            {c: round(float(v), 4)
+             for c, v in zip(feature_cols, result.importances_mean)},
+        )
+        return {
+            col: float(max(0.0, imp))
+            for col, imp in zip(feature_cols, result.importances_mean)
+        }
 
     def _build_leaderboard(self) -> list[dict]:
         """Build a sorted leaderboard from FLAML's search history."""

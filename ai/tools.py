@@ -755,10 +755,14 @@ class AgentTools:
             orientation="h",
             marker_color=COLORS["accent"],
         ))
+        max_imp = max((v for _, v in sorted_imp), default=0.0)
         fig2.update_layout(**DARK_LAYOUT)
-        fig2.update_layout(title="Feature Importance",
-                           xaxis_title="Importance",
-                           margin=dict(l=140, r=30, t=50, b=50))
+        fig2.update_layout(
+            title="Feature Importance",
+            xaxis_title="Permutation Importance (R² drop)",
+            xaxis_range=[0, max_imp * 1.1 if max_imp > 0 else 1],
+            margin=dict(l=140, r=30, t=50, b=50),
+        )
 
         # 3. Residuals vs Predicted
         fig3 = go.Figure()
