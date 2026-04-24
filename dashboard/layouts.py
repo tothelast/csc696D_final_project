@@ -694,10 +694,7 @@ def build_agent_help_panel():
                 className='agent-help-card',
                 tabIndex=0,
                 **{'data-name': e['name']},
-                children=[
-                    html.Span(e['title'], className='agent-help-card-title'),
-                    html.Span(e['short'], className='agent-help-card-short'),
-                ],
+                children=html.Span(e['title'], className='agent-help-card-title'),
             ))
         sections.append(html.Details(
             open=False,

@@ -902,13 +902,11 @@ def build_tool_catalog() -> list[dict]:
         if ui:
             entries.append({"name": fn.__name__, **ui})
         else:
-            doc = (fn.__doc__ or "").strip()
             entries.append({
                 "name": fn.__name__,
                 "category": "other",
                 "title": fn.__name__.replace("_", " ").capitalize(),
-                "short": doc.split("\n", 1)[0] if doc else "",
-                "long":  doc,
+                "long": (fn.__doc__ or "").strip(),
                 "examples": [],
             })
     entries.sort(key=lambda e: order.get(e["category"], 99))

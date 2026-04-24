@@ -803,6 +803,13 @@ INDEX_STRING = '''
             }
 
             /* ── AI Agent Chat ─────────────────────────────────────────── */
+            /* The chat column is a fixed-height flex column. Status bar,
+               suggestions, and input must stay at their natural size even
+               when the capabilities panel is expanded — otherwise flex's
+               default shrink distributes the deficit across every child
+               and the input row ends up pushed below the visible area.
+               flex-shrink: 0 on the chrome pins them; the panel body and
+               the chat area are the only shrinkable items. */
             .agent-status-bar {
                 display: flex;
                 gap: 12px;
@@ -811,6 +818,7 @@ INDEX_STRING = '''
                 background: #2a2a2a;
                 border-bottom: 1px solid #404040;
                 font-size: 12px;
+                flex-shrink: 0;
             }
             .agent-status-badge {
                 padding: 3px 10px;
@@ -936,19 +944,11 @@ INDEX_STRING = '''
                 background: #1e3a5f;
             }
             .agent-help-card.selected .agent-help-card-title { color: #e5f0ff; }
-            .agent-help-card.selected .agent-help-card-short { color: #a9c2df; }
             .agent-help-card-title {
                 display: block;
                 font-size: 12px;
                 color: #e0e0e0;
                 font-weight: 600;
-            }
-            .agent-help-card-short {
-                display: block;
-                font-size: 11px;
-                color: #888888;
-                margin-top: 3px;
-                line-height: 1.4;
             }
             /* ── Persistent preview pane ────────────────────────────────
                Replaces per-card ::after popovers. A popover was an
@@ -967,7 +967,14 @@ INDEX_STRING = '''
                 border-radius: 6px;
                 padding: 10px 12px;
                 margin-bottom: 14px;
-                min-height: 62px;
+                /* Sized to just cover the tallest expanded state (title
+                   + three-line description + 'Try asking:' line on the
+                   longest tool, run_automl) so the pane's height does
+                   NOT change when the user hovers, pins, or deselects a
+                   card. Bigger would leave visible empty space below
+                   short tools' content; smaller would allow the run_automl
+                   case to push the sections below it down on hover. */
+                min-height: 118px;
                 font-size: 11.5px;
                 line-height: 1.5;
                 color: #c8c8c8;
@@ -1021,7 +1028,10 @@ INDEX_STRING = '''
                 }
                 .agent-help-preview {
                     padding: 8px 10px;
-                    min-height: 44px;
+                    /* Same no-jank contract, smaller budget: the example
+                       line is hidden on narrow screens, so the tallest
+                       content is title + description. */
+                    min-height: 90px;
                     font-size: 11px;
                     line-height: 1.45;
                 }
@@ -1146,6 +1156,7 @@ INDEX_STRING = '''
                 padding: 12px 16px;
                 background: #2a2a2a;
                 border-top: 1px solid #404040;
+                flex-shrink: 0;         /* must stay visible — see note above */
             }
             .agent-input-area input {
                 flex: 1;
@@ -1184,6 +1195,7 @@ INDEX_STRING = '''
                 gap: 8px;
                 justify-content: center;
                 padding: 8px 16px;
+                flex-shrink: 0;         /* must stay visible — see note above */
             }
             .agent-suggestion-chip {
                 background: #353535;
@@ -1216,6 +1228,9 @@ INDEX_STRING = '''
                 flex-direction: column;
                 border-right: 1px solid #404040;
                 min-width: 0;
+                min-height: 0;          /* allow flex children to shrink */
+                overflow: hidden;       /* backstop: clip rather than push
+                                           content past the column bottom */
             }
             .agent-canvas-column {
                 flex: 1;
