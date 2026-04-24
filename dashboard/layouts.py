@@ -655,21 +655,23 @@ def build_agent_help_panel():
         .agent-help-panel
         ├── <button.agent-help-toggle>
         └── .agent-help-body (overflow-y: auto)
-            ├── .agent-help-preview (position: sticky — stays pinned at
-            │   │                     the top of the scroll area; never
-            │   │                     an absolutely-positioned descendant
-            │   │                     so the body's overflow cannot clip
-            │   │                     it, which was the previous bug.)
+            ├── .agent-help-preview (position: sticky — never clipped
+            │   │                     because it is not an absolutely-
+            │   │                     positioned descendant)
             │   ├── .agent-help-preview-default
             │   └── .agent-help-preview-item × N (data-name=…)
-            └── .agent-help-section × M
-                ├── .agent-help-section-title
+            └── <details.agent-help-section> × M  (collapsed by default)
+                ├── <summary.agent-help-section-title>
                 └── .agent-help-grid
-                    └── .agent-help-card × K (data-name=…)
+                    └── .agent-help-card (tabindex=0, data-name=…) × K
 
-    Hover behavior is entirely CSS-driven (see dashboard/styles.py): a
-    :has() rule per tool name swaps which preview item is visible when
-    its card is hovered. No popovers, no moving tooltips.
+    CSS-only interactions (see dashboard/styles.py):
+      * Hover a card → its preview-item shows (hover rule).
+      * Click a card → card gains :focus (tabindex=0 makes it focusable),
+        its preview-item shows even after mouse leaves (pin).
+      * Hover overrides focus via :not(:has(.card:hover)) guard.
+      * Click outside any card → focus lost, preview reverts to default.
+      * <details> gives native open/close + keyboard support for free.
     """
     from ai.tools import build_tool_catalog
     from ai.tool_ui import CATEGORY_ORDER, CATEGORY_TITLES
@@ -690,16 +692,24 @@ def build_agent_help_panel():
         for e in items:
             cards.append(html.Div(
                 className='agent-help-card',
+                tabIndex=0,
                 **{'data-name': e['name']},
                 children=[
                     html.Span(e['title'], className='agent-help-card-title'),
                     html.Span(e['short'], className='agent-help-card-short'),
                 ],
             ))
-        sections.append(html.Div(className='agent-help-section', children=[
-            html.Div(CATEGORY_TITLES[cat], className='agent-help-section-title'),
-            html.Div(className='agent-help-grid', children=cards),
-        ]))
+        sections.append(html.Details(
+            open=False,
+            className='agent-help-section',
+            children=[
+                html.Summary(
+                    CATEGORY_TITLES[cat],
+                    className='agent-help-section-title',
+                ),
+                html.Div(className='agent-help-grid', children=cards),
+            ],
+        ))
 
     preview = html.Div(className='agent-help-preview', children=[
         html.Div(

@@ -866,16 +866,39 @@ INDEX_STRING = '''
                 max-height: min(55vh, 480px);
                 overflow-y: auto;
             }
-            .agent-help-section { margin-bottom: 14px; }
-            .agent-help-section:last-child { margin-bottom: 0; }
+            /* Sections are <details> — collapsed by default. The native
+               ▸ marker is replaced with a ::before chevron for consistent
+               styling across browsers. */
+            .agent-help-section { margin-bottom: 10px; }
+            .agent-help-section:last-of-type { margin-bottom: 0; }
             .agent-help-section-title {
+                list-style: none;
+                cursor: pointer;
+                user-select: none;
                 font-size: 10px;
                 font-weight: 700;
                 letter-spacing: 1px;
                 text-transform: uppercase;
                 color: #707070;
-                margin-bottom: 8px;
+                padding: 6px 0;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                outline: none;
             }
+            .agent-help-section-title::-webkit-details-marker { display: none; }
+            .agent-help-section-title::before {
+                content: '▸';
+                font-size: 10px;
+                color: #5a5a5a;
+                transition: transform 0.15s ease;
+            }
+            .agent-help-section[open] > .agent-help-section-title::before {
+                transform: rotate(90deg);
+            }
+            .agent-help-section-title:hover { color: #a0a0a0; }
+            /* Grid rendered only when the section is open. */
+            .agent-help-section:not([open]) .agent-help-grid { display: none; }
             .agent-help-grid {
                 display: grid;
                 /* Packs 2 columns at ~360 px chat width, 3+ when the
@@ -883,21 +906,37 @@ INDEX_STRING = '''
                    don't force a single jumbo column. */
                 grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
                 gap: 8px;
+                margin-top: 6px;
             }
             .agent-help-card {
                 background: #2a2a2a;
                 border: 1px solid #3d3d3d;
                 border-radius: 6px;
                 padding: 10px 12px;
-                cursor: default;
-                /* No transitions, no transforms, no z-index on hover.
-                   The card does not move, resize, or change stacking on
-                   hover — only border color changes. This eliminates
-                   every possible source of perceived text motion. */
+                cursor: pointer;
+                outline: none;             /* border-color is the focus ring */
+                /* No transitions, no transforms, no z-index on hover/focus.
+                   The card does not move, resize, or change stacking — only
+                   border color changes. Eliminates perceived text motion. */
             }
-            .agent-help-card:hover {
+            .agent-help-card:hover,
+            .agent-help-card.selected {
                 border-color: #3b82f6;
             }
+            /* Keyboard focus ring — subtle, and independent of the
+               :hover / .selected border so the pinned state is the
+               only thing that actually means "this card owns the
+               preview". */
+            .agent-help-card:focus {
+                box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.35);
+            }
+            /* A pinned (clicked) card gets a subtle tinted background so
+               users can tell, at a glance, which card owns the preview. */
+            .agent-help-card.selected {
+                background: #1e3a5f;
+            }
+            .agent-help-card.selected .agent-help-card-title { color: #e5f0ff; }
+            .agent-help-card.selected .agent-help-card-short { color: #a9c2df; }
             .agent-help-card-title {
                 display: block;
                 font-size: 12px;
@@ -956,15 +995,23 @@ INDEX_STRING = '''
                 color: #707070;
                 font-style: italic;
             }
-            /* Any card hovered → swap the default hint out. */
-            .agent-help-body:has(.agent-help-card:hover) .agent-help-preview-default {
+            /* Hide the default hint whenever a card is hovered or pinned.
+               :focus is deliberately NOT included: it only drives the
+               visual focus ring (border color), never the preview. This
+               decouples "what does the preview show?" from browser focus
+               transfer, so an imprecise click that sets :focus but not
+               .selected can't leave a stale preview behind. */
+            .agent-help-body:has(.agent-help-card:is(:hover, .selected))
+                .agent-help-preview-default {
                 display: none;
             }
-            /* One rule per tool — swaps in the matching preview item.
-               Generated at module load from ai.tool_ui.TOOL_UI so adding
-               a new capability requires zero CSS changes. */
+            /* Two rules per tool — hover (transient) and .selected (pinned).
+               Precedence: hover > .selected, enforced by a :not() guard
+               on the pinned rule so only one preview-item is visible at
+               a time. Generated at module load from ai.tool_ui.TOOL_UI. */
             {%agent_help_rules%}
-            /* Very narrow windows: shrink card minimum so cards still tile. */
+            /* Narrow windows: tighter preview (drop the example line since
+               the card's own short already conveys the gist), tighter grid. */
             @media (max-width: 900px) {
                 .agent-help-grid {
                     grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
@@ -972,6 +1019,14 @@ INDEX_STRING = '''
                 .agent-help-body {
                     max-height: min(60vh, 420px);
                 }
+                .agent-help-preview {
+                    padding: 8px 10px;
+                    min-height: 44px;
+                    font-size: 11px;
+                    line-height: 1.45;
+                }
+                .agent-help-preview-title { font-size: 11.5px; }
+                .agent-help-preview-example { display: none; }
             }
             .agent-chat-area {
                 flex: 1;
@@ -1322,6 +1377,54 @@ INDEX_STRING = '''
                 window.addEventListener('unhandledrejection', function(e) {
                     if (e.reason === undefined) e.preventDefault();
                 });
+
+                // Capability-card pin/unpin.
+                //
+                // A clicked (or Enter/Space-ed) card gets a .selected
+                // class; clicking a different card moves .selected to
+                // it; clicking the already-selected card toggles it
+                // off; clicks outside any card are ignored.
+                //
+                // We listen on `mousedown`, not `click`, because :focus
+                // transfers on mousedown. If we waited for `click`, a
+                // slight cursor drift between press and release (common
+                // on trackpads) would suppress the click event, leaving
+                // :focus set but .selected unset — and the preview
+                // stuck on a card that visually looked unclicked.
+                // mousedown keeps the two states in lockstep.
+                (function() {
+                    function selectCard(card, ev) {
+                        var panel = card.closest('.agent-help-panel');
+                        if (!panel) return;
+                        var wasSelected = card.classList.contains('selected');
+                        var prev = panel.querySelectorAll('.agent-help-card.selected');
+                        for (var i = 0; i < prev.length; i++) {
+                            prev[i].classList.remove('selected');
+                        }
+                        if (wasSelected) {
+                            // Toggling off. Blur so the focus ring drops too
+                            // and, if this was a mousedown, preventDefault so
+                            // the browser doesn't immediately re-focus the
+                            // card as the default mousedown action.
+                            card.blur();
+                            if (ev && ev.preventDefault) ev.preventDefault();
+                        } else {
+                            card.classList.add('selected');
+                        }
+                    }
+                    document.addEventListener('mousedown', function(e) {
+                        if (e.button !== 0) return;         // left-click only
+                        var card = e.target.closest && e.target.closest('.agent-help-card');
+                        if (card) selectCard(card, e);
+                    });
+                    document.addEventListener('keydown', function(e) {
+                        if (e.key !== 'Enter' && e.key !== ' ') return;
+                        var card = e.target.closest && e.target.closest('.agent-help-card');
+                        if (!card) return;
+                        e.preventDefault();                 // stop Space from scrolling
+                        selectCard(card, e);
+                    });
+                })();
             </script>
         </footer>
     </body>
@@ -1336,11 +1439,20 @@ INDEX_STRING = '''
 # appears automatically with no CSS changes required here.
 def _build_agent_help_rules() -> str:
     from ai.tool_ui import TOOL_UI
-    template = (
+    hover_tpl = (
         '.agent-help-body:has(.agent-help-card[data-name="{n}"]:hover) '
         '.agent-help-preview-item[data-name="{n}"] {{ display: block; }}'
     )
-    return '\n            '.join(template.format(n=name) for name in TOOL_UI)
+    pinned_tpl = (
+        '.agent-help-body:not(:has(.agent-help-card:hover))'
+        ':has(.agent-help-card[data-name="{n}"].selected) '
+        '.agent-help-preview-item[data-name="{n}"] {{ display: block; }}'
+    )
+    rules = []
+    for name in TOOL_UI:
+        rules.append(hover_tpl.format(n=name))
+        rules.append(pinned_tpl.format(n=name))
+    return '\n            '.join(rules)
 
 
 INDEX_STRING = INDEX_STRING.replace('{%agent_help_rules%}', _build_agent_help_rules())
