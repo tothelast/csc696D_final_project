@@ -412,10 +412,14 @@ class AgentTools:
         """Generate a scatter plot of two features from the dataset.
 
         Args:
-            x_feature: Feature name for the x-axis.
-            y_feature: Feature name for the y-axis.
-            color_by: Optional categorical feature for color coding points
-                (e.g. 'Wafer', 'Pad', 'Slurry', 'Conditioner').
+            x_feature: Feature name for the x-axis. Must be one of:
+                COF, Fy, Var Fy, Fz, Var Fz, Mean Temp, Init Temp, High Temp,
+                Removal, WIWNU, Mean Pressure, Mean Velocity, P.V, COF.P.V,
+                Sommerfeld, Removal Rate, Pressure PSI, Polish Time.
+            y_feature: Feature name for the y-axis (same valid values as
+                x_feature).
+            color_by: Optional categorical feature for color coding points.
+                Must be one of: Wafer, Pad, Slurry, Conditioner.
             filter_column: Optional column name to filter data on.
             filter_value: Value to match in filter_column. Must be an exact
                 value present in the data. If unsure, call get_dataset_summary
@@ -423,11 +427,27 @@ class AgentTools:
 
         Returns:
             Plotly figure as a JSON-serializable dictionary, or an error
-            string if the filter_value is not found.
+            string if any input is invalid.
         """
         df = self.dm.get_all_data()
         if df.empty:
             return {"figure": self._empty_fig("No data loaded."), "summary": "No data loaded."}
+
+        if x_feature not in CORRELATION_FEATURES:
+            return (
+                f"x_feature '{x_feature}' not valid. Valid features: "
+                f"{', '.join(CORRELATION_FEATURES)}"
+            )
+        if y_feature not in CORRELATION_FEATURES:
+            return (
+                f"y_feature '{y_feature}' not valid. Valid features: "
+                f"{', '.join(CORRELATION_FEATURES)}"
+            )
+        if color_by is not None and color_by not in CATEGORICAL_FEATURES:
+            return (
+                f"color_by '{color_by}' not valid. Valid options: "
+                f"{', '.join(CATEGORICAL_FEATURES)}"
+            )
 
         if filter_column and filter_value and filter_column in df.columns:
             # Validate filter_value — return a helpful error rather than
@@ -491,15 +511,31 @@ class AgentTools:
         """Generate a histogram or box plot for a feature.
 
         Args:
-            feature: Feature name to plot.
+            feature: Feature name to plot. Must be one of:
+                COF, Fy, Var Fy, Fz, Var Fz, Mean Temp, Init Temp, High Temp,
+                Removal, WIWNU, Mean Pressure, Mean Velocity, P.V, COF.P.V,
+                Sommerfeld, Removal Rate, Pressure PSI, Polish Time.
             group_by: Optional categorical feature for grouped box plot.
+                Must be one of: Wafer, Pad, Slurry, Conditioner.
 
         Returns:
-            Plotly figure as a JSON-serializable dictionary.
+            Plotly figure as a JSON-serializable dictionary, or an error
+            string if any input is invalid.
         """
         df = self.dm.get_all_data()
         if df.empty:
             return {"figure": self._empty_fig("No data loaded."), "summary": "No data loaded."}
+
+        if feature not in CORRELATION_FEATURES:
+            return (
+                f"feature '{feature}' not valid. Valid features: "
+                f"{', '.join(CORRELATION_FEATURES)}"
+            )
+        if group_by is not None and group_by not in CATEGORICAL_FEATURES:
+            return (
+                f"group_by '{group_by}' not valid. Valid options: "
+                f"{', '.join(CATEGORICAL_FEATURES)}"
+            )
 
         fig = go.Figure()
         summary_lines = []
@@ -550,15 +586,31 @@ class AgentTools:
         """Generate a grouped bar chart showing means with error bars.
 
         Args:
-            feature: Numerical feature for the y-axis values.
-            group_by: Categorical feature for grouping bars.
+            feature: Numerical feature for the y-axis values. Must be one of:
+                COF, Fy, Var Fy, Fz, Var Fz, Mean Temp, Init Temp, High Temp,
+                Removal, WIWNU, Mean Pressure, Mean Velocity, P.V, COF.P.V,
+                Sommerfeld, Removal Rate, Pressure PSI, Polish Time.
+            group_by: Categorical feature for grouping bars. Must be one of:
+                Wafer, Pad, Slurry, Conditioner.
 
         Returns:
-            Plotly figure as a JSON-serializable dictionary.
+            Plotly figure as a JSON-serializable dictionary, or an error
+            string if any input is invalid.
         """
         df = self.dm.get_all_data()
         if df.empty:
             return {"figure": self._empty_fig("No data loaded."), "summary": "No data loaded."}
+
+        if feature not in CORRELATION_FEATURES:
+            return (
+                f"feature '{feature}' not valid. Valid features: "
+                f"{', '.join(CORRELATION_FEATURES)}"
+            )
+        if group_by not in CATEGORICAL_FEATURES:
+            return (
+                f"group_by '{group_by}' not valid. Valid options: "
+                f"{', '.join(CATEGORICAL_FEATURES)}"
+            )
 
         grouped = df.groupby(group_by)[feature]
         means = grouped.mean()

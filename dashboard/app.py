@@ -34,4 +34,11 @@ app.layout = build_app_layout()
 register_callbacks(app, data_manager, agent_engine)
 
 if __name__ == '__main__':
+    import json
+    from core.report import Report
+    with open('Sample_Full_Data/project.json') as f:
+        _data = json.load(f)
+    data_manager.update_report(
+        Report.from_dict(_data['report'], project_dir='Sample_Full_Data')
+    )
     app.run(debug=True)

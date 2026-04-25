@@ -27,7 +27,9 @@ _SYSTEM_PROMPT = """You are an AI assistant embedded in Araca Insights®, a semi
 - When the user asks to build, train, or refresh a prediction model, call `run_automl` DIRECTLY. Do NOT call `get_dataset_summary`, `get_file_details`, or `get_feature_statistics` beforehand — the greeting already reports file counts and the training result already reports data-quality warnings. Reserve those reconnaissance tools for when the user explicitly asks about the data.
 - Training via `run_automl` with default budget (30s) takes roughly 30-40 seconds of wall time. Any positive time_budget is valid — there is NO minimum. Never refuse a user's chosen budget. Longer budgets do NOT guarantee better results on small datasets (under 100 files).
 - After `run_automl` finishes, the prediction form on the right side of the canvas is ALREADY open and populated. Do NOT ask "would you like to open the prediction form?" — tell the user it is ready to use.
-- When the user's request is ambiguous, pick reasonable defaults and state what you chose. For example: "I'll use all numerical features for the heatmap" or "I'll use the default 30-second training budget."
+- For discovery questions ("what drives X", "what's interesting", "find correlations", "what stands out", "what matters most"), prefer the broadest default the tool offers — do NOT pre-filter features or columns based on your prior intuition about what "should" matter. Let the data speak; the user can narrow afterward. Concretely: omit optional `features` arguments to use the tool's full default set.
+- For narrow, specific questions ("show COF distribution", "plot Removal vs Pressure", "scatter A against B"), pick exactly what was asked — do not expand scope.
+- When a tool argument is genuinely ambiguous (e.g., training budget, plot type), pick a reasonable default and state what you chose. For example: "I'll use the default 30-second training budget."
 
 # Data accuracy rules
 - When a chart tool returns a data summary, use ONLY those exact numbers when discussing the chart. Never round differently, invent trends, or embellish beyond what the summary states.
@@ -269,31 +271,32 @@ class AgentEngine:
         if self.automl_manager.automl is not None:
             metrics = self.automl_manager.metrics
             return (
-                f"Your {metrics['best_model']} model is current "
-                f"(R²={metrics['r2']:.3f}, trained on {metrics['n_train']} files). "
-                f"Ask me anything about the results, request predictions, "
-                f"or I can retrain if you've added new data."
+                f"Your {metrics['best_model']} prediction model is ready "
+                f"(R²={metrics['r2']:.3f}, trained on {metrics['n_train']} runs). "
+                f"Ask about feature importance, predict removal for a new set of conditions, "
+                f"or have me retrain if you've added more files."
             )
 
         if file_count == 0:
             return (
-                "No polishing data loaded yet. Import some .dat files in the "
-                "Project page, then come back and I'll help you analyze them."
+                "No polishing data loaded yet. Import some .dat files from the "
+                "Project page, then come back and I'll help you dig into them."
             )
 
         if removal_count < 5:
             return (
                 f"You have {file_count} polishing files loaded, but only "
-                f"{removal_count} have removal data. I need at least 5 files "
-                f"with removal values to build a prediction model. "
-                f"I can still help you explore the data you have — try asking "
-                f"about specific files or features."
+                f"{removal_count} have measured removal — I need at least 5 runs with "
+                f"removal values before I can train a prediction model. "
+                f"In the meantime I can still help you explore COF, temperature, and "
+                f"force trends across your runs. See the Capabilities tab above for ideas."
             )
 
         return (
-            f"You have {file_count} polishing runs loaded, "
-            f"{removal_count} with removal data. "
-            f"Want me to build the best prediction model for this dataset?"
+            f"You have {file_count} polishing runs loaded, with measured removal on "
+            f"{removal_count} of them. Try asking ***what drives removal rate***, "
+            f"***how COF trends across runs***, or to ***train a prediction model***. "
+            f"See the Capabilities tab above for more ideas."
         )
 
     def reset(self):

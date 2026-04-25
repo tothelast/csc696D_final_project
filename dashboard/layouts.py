@@ -723,7 +723,7 @@ def build_agent_help_panel():
             n_clicks=0,
             children=[
                 html.Span(className='agent-help-chevron'),
-                html.Span(f'Capabilities ({total})', className='agent-help-toggle-label'),
+                html.Span(f'AI Capabilities ({total})', className='agent-help-toggle-label'),
             ],
         ),
         html.Div(
