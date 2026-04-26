@@ -36,10 +36,18 @@ class AgentTools:
     # ------------------------------------------------------------------
 
     def get_dataset_summary(self) -> str:
-        """Get an overview of all loaded polishing data including file count, feature ranges, and categorical value counts.
+        """Single source of truth for the loaded dataset's shape: file count, file names, summary-metric columns with value ranges, time-series columns, and categorical breakdowns.
+
+        Other tools (get_file_details, get_feature_statistics, generate_*, run_automl)
+        consume names/values that appear in this tool's output. Always call this
+        first when you don't have the schema in context, and resolve user words
+        ("force", "temperature") to the exact column names listed here before
+        passing them to other tools.
 
         Returns:
-            Summary of loaded dataset as formatted text.
+            Summary of loaded dataset as formatted text with sections:
+            Dataset / Categorical breakdown / Summary metrics / Time-series
+            columns / Files.
         """
         df = self.dm.get_all_data()
         if df.empty:
@@ -72,13 +80,65 @@ class AgentTools:
                 top = ", ".join(f"{v} ({c})" for v, c in counts.head(5).items())
                 lines.append(f"  {cat}: {len(counts)} types — {top}")
 
+        # Summary-metric columns: per-file aggregates. Used by get_file_details,
+        # get_feature_statistics, detect_outliers, generate_scatter,
+        # generate_distribution, generate_bar_chart, run_automl.
+        housekeeping = {"Date", "File Name", "file_id", "Notes", "Wafer #"}
+        summary_cols = [
+            c for c in df.columns
+            if c not in housekeeping
+            and c not in CATEGORICAL_FEATURES
+            and pd.api.types.is_numeric_dtype(df[c])
+        ]
+        if summary_cols:
+            lines.append("Summary metrics (per-file aggregates — use these names with get_file_details, get_feature_statistics, detect_outliers, generate_scatter, generate_distribution, generate_bar_chart, run_automl):")
+            for c in summary_cols:
+                col = df[c].dropna()
+                if not col.empty:
+                    lines.append(
+                        f"  - {c}: {col.min():.4g} – {col.max():.4g} "
+                        f"(mean {col.mean():.4g})"
+                    )
+                else:
+                    lines.append(f"  - {c}: (no data)")
+
+        # Time-series columns: per-frame, sampled at the file's hz. Different
+        # schema from summary metrics. Used ONLY by generate_time_series.
+        ts_cols = self._sample_time_series_columns()
+        if ts_cols:
+            lines.append("Time-series columns (per-frame — use ONLY these names with generate_time_series; they differ from the summary-metric names above):")
+            for c in ts_cols:
+                if c == 'time (s)':
+                    lines.append(f"  - {c}    [x-axis — used automatically; do NOT pass as a feature]")
+                else:
+                    lines.append(f"  - {c}")
+
+        if "File Name" in df.columns:
+            names = df["File Name"].tolist()
+            lines.append("Files (use these exact names — do not invent or abbreviate):")
+            for name in names:
+                lines.append(f"  - {name}")
+
         return "\n".join(lines)
+
+    def _sample_time_series_columns(self) -> list[str]:
+        """Return the per-frame time-series column names from the first loaded
+        file. These are file-level constants set in RawFile.populate_total_per_frame,
+        so the first file is representative."""
+        df = self.dm.get_all_data()
+        if df.empty or "File Name" not in df.columns:
+            return []
+        first_name = df["File Name"].iloc[0]
+        ts = self.dm.get_file_data(first_name)
+        return list(ts.columns) if ts is not None else []
 
     def get_file_details(self, filename: str) -> str:
         """Get detailed metrics for a specific polishing run file.
 
         Args:
-            filename: The .dat filename (e.g. 'run_023.dat').
+            filename: The exact .dat filename as listed by get_dataset_summary.
+                Do NOT invent or abbreviate names — use the literal string from
+                the Files: section of get_dataset_summary's output.
 
         Returns:
             Summary metrics and categorical attributes for the file.
@@ -735,52 +795,161 @@ class AgentTools:
         )
         return {"figure": fig.to_plotly_json(), "summary": "\n".join(summary_lines)}
 
-    def generate_time_series(self, filename: str, features: list[str]) -> dict:
+    def generate_time_series(
+        self,
+        filename: str,
+        features: list[str],
+        y_min: float = None,
+        y_max: float = None,
+        x_min: float = None,
+        x_max: float = None,
+    ) -> dict:
         """Generate a time-series plot for a specific polishing run file.
 
         Args:
-            filename: The .dat filename.
-            features: List of feature names to plot over time (e.g. ['COF', 'IR Temperature']).
+            filename: Exact filename from the Files: section of
+                get_dataset_summary's output. Do not invent or abbreviate.
+            features: List of column names from the Time-series columns section
+                of get_dataset_summary's output. These DIFFER from the summary
+                metrics — e.g. user says "Fz" → pass 'Fz Total (lbf)'; user
+                says "temperature" → pass 'IR Temperature'. Unknown names
+                return a clarification error rather than an empty chart.
+                All features share one y-axis. If they have very different
+                magnitudes (e.g., COF at 0-1 vs Force at 0-300 lbf), call this
+                tool separately for each so the user gets a readable chart per
+                scale.
+            y_min: Optional lower bound for the y-axis. Pass when the user names
+                an explicit range (e.g. "plot COF from 0 to 2"). Must be paired
+                with y_max — passing only one is ambiguous and returns a
+                clarification request instead of a chart.
+            y_max: Optional upper bound for the y-axis. See y_min.
+            x_min: Optional lower bound for the x-axis (time in seconds). Pass
+                when the user names an explicit time window (e.g. "show the first
+                30 seconds" → x_min=0, x_max=30). Must be paired with x_max —
+                passing only one is ambiguous and returns a clarification request.
+            x_max: Optional upper bound for the x-axis (seconds). See x_min.
+
+        Default y-axis behavior when no range is passed:
+            - features == ['COF']: y pinned to [0, 1] (CMP convention).
+            - anything else: auto-range from data.
+
+        Default x-axis behavior: auto-range over the file's full time span when
+        no x_min/x_max is passed.
 
         Returns:
-            Plotly figure as a JSON-serializable dictionary.
+            Plotly figure as a JSON-serializable dictionary, plus a text summary.
         """
+        # Half-bound input is ambiguous — surface back to the agent for clarification.
+        if (y_min is None) != (y_max is None):
+            return {
+                "figure": self._empty_fig("Ambiguous y-axis range"),
+                "summary": (
+                    f"Ambiguous input: y_min={y_min}, y_max={y_max}. "
+                    f"Ask the user for the missing bound before re-running."
+                ),
+            }
+        if (x_min is None) != (x_max is None):
+            return {
+                "figure": self._empty_fig("Ambiguous x-axis range"),
+                "summary": (
+                    f"Ambiguous input: x_min={x_min}, x_max={x_max}. "
+                    f"Ask the user for the missing bound before re-running."
+                ),
+            }
+
         ts_data = self.dm.get_file_data(filename)
         if ts_data is None:
             return {"figure": self._empty_fig(f"File '{filename}' not found."),
                     "summary": f"File '{filename}' not found."}
 
+        unknown = [f for f in features if f not in ts_data.columns]
+        if unknown:
+            features_only = [c for c in ts_data.columns if c != 'time (s)']
+            return {
+                "figure": self._empty_fig("Unknown time-series features"),
+                "summary": (
+                    f"Unknown time-series feature(s): {unknown}. These names are "
+                    f"not in the per-frame schema. Re-resolve user words to the "
+                    f"exact names listed in get_dataset_summary's 'Time-series "
+                    f"columns' section. Note: 'time (s)' is the x-axis and is "
+                    f"used automatically — do NOT pass it as a feature. "
+                    f"Valid feature columns for this file: {features_only}."
+                ),
+            }
+
+        x_values = ts_data['time (s)'] if 'time (s)' in ts_data.columns else None
+        x_title = "Time (s)" if x_values is not None else "Sample"
+
+        # Clip stats to the steady polish interval so transients (startup/
+        # shutdown spikes when forces approach zero) don't dominate the summary
+        # the agent reports back to the user. The chart still plots the full
+        # time series — only the summary stats are clipped.
+        interval = self.dm.get_file_interval(filename)
+        stats_data = ts_data
+        interval_note = None
+        if interval and len(interval) == 2 and 'time (s)' in ts_data.columns:
+            start_s, end_s = interval
+            mask = (ts_data['time (s)'] >= start_s) & (ts_data['time (s)'] <= end_s)
+            if mask.any():
+                stats_data = ts_data[mask]
+                interval_note = (
+                    f"  (stats below are over the steady polish interval "
+                    f"[{start_s:g}s–{end_s:g}s]; startup/shutdown transients excluded)"
+                )
+
         fig = go.Figure()
         summary_lines = [f"Time series for {filename}:"]
+        if interval_note:
+            summary_lines.append(interval_note)
         for i, feat in enumerate(features):
-            if feat in ts_data.columns:
-                fig.add_trace(go.Scatter(
-                    y=ts_data[feat],
-                    mode="lines",
-                    name=feat,
-                    line=dict(color=CLUSTER_COLORS[i % len(CLUSTER_COLORS)]),
-                ))
-                series = ts_data[feat].dropna()
-                if not series.empty:
-                    start_avg = series.iloc[:5].mean()
-                    end_avg = series.iloc[-5:].mean()
-                    if end_avg > start_avg * 1.05:
-                        trend = "increasing"
-                    elif end_avg < start_avg * 0.95:
-                        trend = "decreasing"
-                    else:
-                        trend = "stable"
-                    summary_lines.append(
-                        f"  {feat}: min={series.min():.4g}, max={series.max():.4g}, "
-                        f"mean={series.mean():.4g}, trend={trend}"
-                    )
+            trace_kwargs = dict(
+                y=ts_data[feat],
+                mode="lines",
+                name=feat,
+                line=dict(color=CLUSTER_COLORS[i % len(CLUSTER_COLORS)]),
+            )
+            if x_values is not None:
+                trace_kwargs['x'] = x_values
+            fig.add_trace(go.Scatter(**trace_kwargs))
+            series = stats_data[feat].dropna()
+            if not series.empty:
+                start_avg = series.iloc[:5].mean()
+                end_avg = series.iloc[-5:].mean()
+                if end_avg > start_avg * 1.05:
+                    trend = "increasing"
+                elif end_avg < start_avg * 0.95:
+                    trend = "decreasing"
+                else:
+                    trend = "stable"
+                summary_lines.append(
+                    f"  {feat}: min={series.min():.4g}, max={series.max():.4g}, "
+                    f"mean={series.mean():.4g}, trend={trend}"
+                )
 
         fig.update_layout(**DARK_LAYOUT)
         fig.update_layout(
             title=f"Time Series: {filename}",
-            xaxis_title="Sample",
+            xaxis_title=x_title,
             yaxis_title="Value",
         )
+
+        if y_min is not None and y_max is not None:
+            fig.update_yaxes(range=[y_min, y_max], autorange=False)
+            summary_lines.append(f"  y-axis: [{y_min}, {y_max}] (user-specified)")
+        elif features == ['COF']:
+            fig.update_yaxes(range=[0, 1], autorange=False)
+            summary_lines.append("  y-axis: [0, 1] (default for COF)")
+        else:
+            fig.update_yaxes(autorange=True)
+            summary_lines.append("  y-axis: auto-range (spans all plotted features)")
+
+        if x_min is not None and x_max is not None:
+            fig.update_xaxes(range=[x_min, x_max], autorange=False)
+            summary_lines.append(f"  x-axis: [{x_min}, {x_max}] s (user-specified)")
+        else:
+            fig.update_xaxes(autorange=True)
+            summary_lines.append("  x-axis: auto-range (full file time span)")
+
         return {"figure": fig.to_plotly_json(), "summary": "\n".join(summary_lines)}
 
     def generate_model_plots(self) -> dict:
