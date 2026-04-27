@@ -16,7 +16,7 @@ python main.py
 pip install -r requirements.txt
 ```
 
-No test suite, linter, or CI pipeline is configured. See "Testing and debugging with real CMP data" below for the ad-hoc pattern used during development.
+No test suite, linter, or CI pipeline is configured. See "Development & Debugging" below for the ad-hoc pattern used during development, including how to load the `Sample_Full_Data/` fixture and exercise the AI agent's tools and AutoML pipeline directly from a Python shell.
 
 ## Architecture
 
@@ -25,24 +25,29 @@ No test suite, linter, or CI pipeline is configured. See "Testing and debugging 
 - **`core/`** — Data models. `RawFile` parses `.dat` measurement files and computes metrics. `Report` is a collection of `RawFile` objects, serializable to JSON.
 - **`desktop/`** — PyQt6 UI. `MainWindow` uses `QStackedWidget` for page navigation (Landing → Project → Analysis). Background work runs in `QThread` workers.
 - **`dashboard/`** — Dash/Plotly web app embedded in `AnalysisPage` via threaded server on port 8050. Five tabs: Analyze File, Compare Files, Key Correlations, Predict Removal, AI Agent.
-- **`ai/`** — Local LLM agent (qwen3.5 via Ollama) with tool calling. `agent.py` drives the conversation loop; `tools.py` defines the ~13 tools (data queries, chart generators, AutoML trainer); `automl.py` wraps FLAML for the prediction model; `callbacks_agent.py` registers the chat/canvas Dash callbacks.
+- **`ai/`** — Local LLM agent (Qwen 3.5 35B via Ollama) with native JSON tool calling. Three collaborating components plus a Dash-callback layer; see "AI subsystem" below.
+
+### AI subsystem (`ai/`)
+
+The agent is a thin, owned ReAct loop (~300 LOC) — no LangChain/CrewAI tax. Three classes do the work:
+
+- **`AgentEngine`** (`ai/agent.py`) — owns the conversation. Holds the `messages` list (system prompt + user/assistant/tool turns), a streaming `Queue[StreamChunk]` for the Dash UI, and a daemon worker thread per user message. Each turn calls `ollama.Client.chat(model=_MODEL, tools=…, stream=True)` against a local Ollama daemon (default port 11434), consumes streamed `tool_calls`, dispatches them through `AgentTools`, appends the result as a `role=tool` message, and re-enters the loop. Hard caps: 8 tool rounds per user turn, history pruned at 48 K chars (`_prune_history`), `think=False` (Qwen's thinking tokens confused users in practice). The system prompt at lines 19–50 is the Senior CMP Process Engineer persona — keep that voice when adding new tool guidance.
+- **`AgentTools`** (`ai/tools.py`) — registers **15** bound methods via `get_all_tools()` (line ~1745). Ollama auto-generates JSON schemas from type annotations + docstrings, so docstring wording is part of the tool API: it directly steers when and how the LLM calls each tool. Categories: data queries (`get_dataset_summary`, `get_file_details`, `find_files_by_config`, `get_feature_statistics`, `detect_outliers`), modelling (`run_automl`, `open_prediction_form`, `analyze_sensitivity`, `get_model_diagnostics`), and chart generators (`generate_scatter`, `generate_distribution`, `generate_bar_chart`, `generate_correlation_heatmap`, `generate_time_series`, `generate_model_plots`). Every chart tool returns the dual-channel `{"figure": <plotly-json>, "summary": <text>}` shape — the LLM only sees `summary`, the user sees `figure` rendered on the canvas.
+- **`AutoMLManager`** (`ai/automl.py`) — FLAML wrapper for the agent's prediction tools. Searches over nine regression estimators (`lgbm`, `xgboost`, `xgb_limitdepth`, `rf`, `extra_tree`, `histgb`, `enet`, `lassolars`, `sgd`) with `eval_method="cv"`, `metric="rmse"`, `n_splits=min(5, max(2, n//3))`, `seed=42`. After FLAML returns a winner, a **second nested-CV pass** re-fits only the winning `(estimator, config)` once per outer fold (`time_budget=-1, max_iter=1, starting_points={best: [config]}`) to produce honest out-of-fold predictions in `_oof_pred` — this avoids the multiple-comparison bias of `automl.best_loss` while staying 10–50× faster than running full AutoML per fold. Per-prediction uncertainty: tree-ensemble spread for bagging models (`RandomForest`, `ExtraTrees`), CV RMSE fallback for boosting/linear. Feature importance: `sklearn.inspection.permutation_importance` (R² drop, `n_repeats=10`) — used uniformly because FLAML's native `feature_importances_` returns `None` for `histgb` and inflated raw coefficients for linear models.
+- **`callbacks_agent.py`** — Dash callbacks that wire the chat input, streamed bubbles, tool indicators, and right-side canvas (chart + prediction form) to the `AgentEngine` queue. The prediction form is auto-opened and pre-populated when `run_automl` succeeds.
 
 ### Data flow
 
-1. User imports `.dat` files → `FileImportWorker` copies to `project/data/`
-2. `RawFile.__init__()` parses CSV, calculates metrics (COF, temperature, removal rate, etc.)
-3. `Report` holds all `RawFile` objects; saved/loaded as `project.json` with relative paths
-4. On "Advanced Analysis", `DataManager` singleton receives the `Report` reference
-5. Dash callbacks read from `DataManager.get_all_data()` (summary DataFrame) or `DataManager.get_file_data(basename)` (time-series DataFrame)
-
-### Key bridge pattern
-
-`DataManager` (`dashboard/dash_bridge.py`) is a singleton that bridges PyQt6 and Dash. The desktop side sets the report; the dashboard side reads it. This is the only shared state between the two interfaces.
+1. User imports `.dat` files → `FileImportWorker` copies to `project/data/`.
+2. `RawFile.__init__()` parses the CSV, computes per-frame time-series and the `final_row` summary (COF, mean temp, var Fz, removal rate, …).
+3. `Report` aggregates all `RawFile` objects; saved/loaded as `project.json` with paths relative to the project directory (`to_dict`/`from_dict`).
+4. When the user clicks "Advanced Analysis", the desktop side calls `DataManager.update_report(report)` — the singleton at `dashboard/dash_bridge.py` is the **sole bridge** between the PyQt6 process and the Dash app threaded onto port 8050.
+5. Every Dash callback, every AI tool, and every AutoML training run reads through that same singleton: `DataManager.get_all_data()` returns the per-file summary DataFrame; `DataManager.get_file_data(basename)` returns the per-frame time-series DataFrame for a single run. Because `AgentEngine`, `AgentTools`, and `AutoMLManager` are all constructed with the same `DataManager` reference, any data loaded in the desktop UI is immediately visible to the agent and to an external browser session pointed at `http://127.0.0.1:8050/`.
 
 ## Important Conventions
 
 ### RawFile property setters
-All mutable properties (`removal`, `nu`, `pressure_psi`, `polish_time`, `wafer_num`, etc.) use `@property`/`@setter` decorators that trigger `final_row` recalculation. Always use setters, never modify `_final_row` directly.
+All mutable properties on `RawFile` (`removal`, `nu`, `pressure_psi`, `polish_time`, `wafer_num`, `pad`, `slurry`, `conditioner`, …) are wrapped in `@property` / `@<name>.setter` decorators whose setters re-run the `final_row` computation. **Always assign through the setter** (`raw_file.removal = 1234`); never mutate `_final_row` directly and never bypass the setter via `__dict__` or `object.__setattr__`. The summary DataFrame returned by `DataManager.get_all_data()` is built from `final_row`, so a stale `_final_row` silently propagates into every chart, correlation, prediction, and AutoML training run downstream.
 
 ### DataFrame column names
 - **Time-series** (per-frame): `'Fz Total (lbf)'`, `'Fy Total (lbf)'`, `'IR Temperature'`, etc.
@@ -75,7 +80,17 @@ There are two independent prediction pipelines — they do not share state.
 - Categorical features use pandas `CategoricalDtype` snapshots taken at train time so predict-time rows keep the same category→code mapping
 - Feature importance is computed via `sklearn.inspection.permutation_importance` (R² drop, n_repeats=10) — FLAML's native `feature_importances_` returns None for `histgb` and inflated raw coefficients for linear models, so permutation is used uniformly for comparable, model-agnostic values
 
-## Testing and debugging with real CMP data
+### ML model consistency (`_cat_dtypes`)
+FLAML's gradient-boosted and tree estimators consume categorical columns by their integer codes, not their string labels. `AutoMLManager.train()` therefore takes a snapshot of every training-time `CategoricalDtype` into `self._cat_dtypes` (a `dict[col, CategoricalDtype]`, see `ai/automl.py:109–111`) immediately after `X[col].astype("category")`. Any predict-time row **must** be cast back through that exact dtype before being passed to `self.automl.predict(...)`:
+
+```python
+for col in PREDICTION_CATEGORICAL_FEATURES:
+    X_new[col] = X_new[col].astype(self._cat_dtypes[col])
+```
+
+The naive alternative — calling `astype("category")` on the single-row predict frame — re-derives the categories from whatever happens to be in that row, reassigns codes starting at `0`, and silently produces wrong predictions (Pad "IC1000" gets code `0` instead of, say, `3`). The same `_cat_dtypes` dict also drives `get_category_options()`, which is what the prediction form's dropdowns and the agent's `open_prediction_form` tool use to validate user-supplied category strings against the trained model's known levels. **Never rebuild categoricals from a fresh frame at predict time, and never reassign `_cat_dtypes` outside of `train()`.**
+
+## Development & Debugging
 
 The `Sample_Full_Data/` directory is the canonical fixture for manual tests and debugging. It holds `project.json` plus 94 `.dat` files; 76 of them have valid `Removal > 0`. Known quirks worth exercising: `Polish Time` is constant across the whole set (`nunique=1`), `Slurry` is single-valued (`CU4545F-300`), and `Conditioner` has only two levels — these are useful for checking constant-column and low-cardinality guards.
 
