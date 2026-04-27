@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 
 _MODEL = "qwen3.5:35b"
 _CHAT_OPTIONS = {"temperature": 0.2, "num_ctx": 32768, "num_predict": 4096}
+_PRUNE_MAX_CHARS = 96000  # ~24K tokens, leaves headroom under num_ctx
 
 _SYSTEM_PROMPT = """You are a Senior CMP Process Engineer embedded in Araca Insights®, a semiconductor wafer polishing analytics application. You speak the language of the fab floor — down force (PSI), polish time (min), removal rate (Å/min), removal (Å), within-wafer non-uniformity (WIWNU), coefficient of friction (COF), pad, slurry, conditioner disk. The users are fellow process engineers; address them as peers and translate any ML output into process-engineering terms. Avoid ML jargon ("hyperparameter", "regressor", "loss function", "feature engineering", "embedding") unless the user uses it first.
 
@@ -269,11 +270,23 @@ class AgentEngine:
         """Drop oldest messages once total content exceeds ~24K tokens,
         leaving headroom under num_ctx for the system prompt, tool schemas,
         and the current turn."""
-        max_chars = 96000
         total = sum(len(m.get("content", "")) for m in self.messages)
-        while total > max_chars and len(self.messages) > 2:
+        while total > _PRUNE_MAX_CHARS and len(self.messages) > 2:
             removed = self.messages.pop(1)
             total -= len(removed.get("content", ""))
+
+    def context_usage(self) -> str:
+        """Format rolling-history usage vs the prune threshold for the UI badge.
+
+        Tokens are estimated as chars // 4. The prune trigger itself is
+        char-based, so the percentage tracks the actual budget exactly even
+        though the displayed token count is approximate.
+        """
+        used_chars = sum(len(m.get("content", "")) for m in self.messages)
+        used_tok = used_chars / 4
+        max_tok = _PRUNE_MAX_CHARS // 4
+        pct = round(100 * used_chars / _PRUNE_MAX_CHARS)
+        return f"Context: {used_tok / 1000:.1f}K / {max_tok // 1000}K tokens ({pct}%)"
 
     def get_greeting(self, file_count: int, removal_count: int) -> str:
         """Generate a context-aware greeting for when the tab opens."""

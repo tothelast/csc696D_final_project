@@ -181,7 +181,8 @@ def register_agent_callbacks(app, data_manager, agent_engine: AgentEngine):
          Output('agent-open-tabs', 'data', allow_duplicate=True),
          Output('agent-active-tab', 'data', allow_duplicate=True),
          Output('agent-automl-trained', 'data', allow_duplicate=True),
-         Output('agent-pred-prefill', 'data', allow_duplicate=True)],
+         Output('agent-pred-prefill', 'data', allow_duplicate=True),
+         Output('agent-context-badge', 'children', allow_duplicate=True)],
         [Input('agent-poll-interval', 'n_intervals')],
         [State('agent-chat-area', 'children'),
          State('agent-pending-message', 'data'),
@@ -194,7 +195,8 @@ def register_agent_callbacks(app, data_manager, agent_engine: AgentEngine):
                        chart_history, open_tabs):
         if not is_processing:
             return (no_update, True, no_update, no_update, no_update, no_update,
-                    no_update, no_update, no_update, no_update, no_update)
+                    no_update, no_update, no_update, no_update, no_update,
+                    no_update)
 
         children = list(current_children) if current_children else []
 
@@ -389,10 +391,12 @@ def register_agent_callbacks(app, data_manager, agent_engine: AgentEngine):
                 active_out,
                 trained_out,
                 prefill_out,
+                _engine.context_usage(),
             )
 
         return (children, no_update, no_update, no_update, no_update, no_update,
-                history_out, tabs_out, active_out, trained_out, prefill_out)
+                history_out, tabs_out, active_out, trained_out, prefill_out,
+                _engine.context_usage())
 
     # == Callback 3: Tab activation — greeting ==============================
     @app.callback(
@@ -401,14 +405,16 @@ def register_agent_callbacks(app, data_manager, agent_engine: AgentEngine):
          Output('agent-ollama-badge', 'children'),
          Output('agent-ollama-badge', 'className'),
          Output('agent-model-badge', 'children', allow_duplicate=True),
-         Output('agent-model-badge', 'className', allow_duplicate=True)],
+         Output('agent-model-badge', 'className', allow_duplicate=True),
+         Output('agent-context-badge', 'children', allow_duplicate=True)],
         Input('analysis-tabs', 'value'),
         State('agent-chat-area', 'children'),
         prevent_initial_call=True,
     )
     def on_tab_activate(tab_value, current_children):
         if tab_value != 'agent':
-            return no_update, no_update, no_update, no_update, no_update, no_update
+            return (no_update, no_update, no_update, no_update, no_update,
+                    no_update, no_update)
 
         df = data_manager.get_all_data()
         file_count = len(df)
@@ -425,6 +431,8 @@ def register_agent_callbacks(app, data_manager, agent_engine: AgentEngine):
             model_text = no_update
             model_class = no_update
 
+        context_text = _engine.context_usage() if _engine else no_update
+
         # Dedup guard: if the greeting (or any assistant message containing
         # that exact text) is already in the chat, don't re-append it. This
         # protects against double-renders if the callback ever re-fires on
@@ -432,10 +440,12 @@ def register_agent_callbacks(app, data_manager, agent_engine: AgentEngine):
         if current_children:
             for c in current_children:
                 if _extract_text(c) == greeting:
-                    return no_update, no_update, no_update, no_update, model_text, model_class
+                    return (no_update, no_update, no_update, no_update,
+                            model_text, model_class, context_text)
             # Chat is non-empty but doesn't contain the greeting — still skip,
             # matching prior "only greet once" behaviour.
-            return no_update, no_update, no_update, no_update, model_text, model_class
+            return (no_update, no_update, no_update, no_update,
+                    model_text, model_class, context_text)
 
         children = [_assistant_msg(greeting)]
 
@@ -456,7 +466,8 @@ def register_agent_callbacks(app, data_manager, agent_engine: AgentEngine):
             ollama_text = "Unavailable"
             ollama_class = "agent-status-badge"
 
-        return children, data_badge, ollama_text, ollama_class, model_text, model_class
+        return (children, data_badge, ollama_text, ollama_class,
+                model_text, model_class, context_text)
 
     # == Callback 4: Render tab bar ==========================================
     @app.callback(

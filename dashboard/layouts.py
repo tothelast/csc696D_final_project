@@ -753,6 +753,8 @@ def build_agent_tab():
                                children='0 files'),
                     html.Span(id='agent-ollama-badge', className='agent-status-badge',
                                children='Connecting...'),
+                    html.Span(id='agent-context-badge', className='agent-status-badge',
+                               children='Context: 0%'),
                 ]),
 
                 # Collapsible capabilities panel
