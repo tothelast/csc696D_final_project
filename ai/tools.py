@@ -15,6 +15,7 @@ import plotly.graph_objects as go
 from dashboard.constants import (
     CORRELATION_FEATURES,
     CATEGORICAL_FEATURES,
+    PREDICTION_CATEGORICAL_FEATURES,
     PREDICTION_NUMERICAL_FEATURES,
 )
 from dashboard.plotly_theme import DARK_LAYOUT, CLUSTER_COLORS
@@ -625,6 +626,162 @@ class AgentTools:
 
         return {"prefill": prefill, "message": msg}
 
+    def analyze_sensitivity(
+        self,
+        feature: str,
+        pressure_psi: float = None,
+        polish_time: float = None,
+        wafer: str = None,
+        pad: str = None,
+        slurry: str = None,
+        conditioner: str = None,
+        n_points: int = 11,
+    ) -> dict:
+        """Sweep one recipe knob across its trained range while holding the other inputs at a baseline, and predict Removal at each step (One-Factor-At-A-Time sensitivity on the trained model).
+
+        Use for trade-off / trend questions: "how does Pressure affect
+        Removal", "sensitivity of Removal to Polish Time", "compare predicted
+        Removal across pads". Requires a model trained by `run_automl`.
+
+        Baseline defaults: median for unspecified numerical features
+        (Pressure PSI, Polish Time), mode for unspecified categoricals
+        (Wafer, Pad, Slurry, Conditioner). User-supplied baseline arguments
+        override defaults; the swept feature's own argument is ignored. Grid
+        is clamped to the training envelope (min..max for numerics, every
+        trained category for categoricals) so the model never extrapolates.
+
+        Args:
+            feature: Exact knob to sweep. One of 'Pressure PSI',
+                'Polish Time', 'Wafer', 'Pad', 'Slurry', 'Conditioner'.
+            pressure_psi: Optional baseline pressure (PSI).
+            polish_time: Optional baseline polish time (minutes).
+            wafer: Optional baseline Wafer category (exact trained value).
+            pad: Optional baseline Pad category.
+            slurry: Optional baseline Slurry category.
+            conditioner: Optional baseline Conditioner category.
+            n_points: Numeric grid density (3..25, default 11). Ignored for
+                categoricals.
+
+        Returns:
+            Dict with two keys:
+            - 'figure' — Plotly line+ribbon (numeric) or bar+error
+              (categorical) of Predicted Removal Å vs the swept knob, with
+              ±1σ uncertainty.
+            - 'summary' — text the agent receives: feature swept, baseline
+              values held fixed, every (knob → predicted Å ± σ) grid point,
+              predicted-removal range, endpoint slope (numeric), and a
+              monotonicity flag. Cite values verbatim; do NOT interpolate
+              between grid points.
+        """
+        if self.ml.automl is None:
+            return {
+                "figure": self._empty_fig("No model trained."),
+                "summary": (
+                    "No model trained yet. Call run_automl first, then "
+                    "re-run analyze_sensitivity."
+                ),
+            }
+
+        valid = list(PREDICTION_NUMERICAL_FEATURES) + list(
+            PREDICTION_CATEGORICAL_FEATURES
+        )
+        if feature not in valid:
+            return {
+                "figure": self._empty_fig(f"Unknown feature: {feature}"),
+                "summary": (
+                    f"Unknown feature '{feature}'. Valid options: {', '.join(valid)}."
+                ),
+            }
+
+        df = self.ml.train_df
+        is_numeric = feature in PREDICTION_NUMERICAL_FEATURES
+
+        baseline = {}
+        for col in PREDICTION_NUMERICAL_FEATURES:
+            baseline[col] = float(df[col].median())
+        for col in PREDICTION_CATEGORICAL_FEATURES:
+            baseline[col] = str(df[col].mode().iloc[0])
+
+        overrides = {
+            "Pressure PSI": pressure_psi,
+            "Polish Time": polish_time,
+            "Wafer": wafer,
+            "Pad": pad,
+            "Slurry": slurry,
+            "Conditioner": conditioner,
+        }
+        try:
+            for col, val in overrides.items():
+                if val is None or col == feature:
+                    continue
+                if col in PREDICTION_NUMERICAL_FEATURES:
+                    fv = float(val)
+                    if fv < 0:
+                        raise ValueError(f"{col} must be non-negative, got {fv}.")
+                    baseline[col] = fv
+                else:
+                    baseline[col] = self._resolve_category(str(val), col)
+        except ValueError as exc:
+            return {
+                "figure": self._empty_fig(f"Bad baseline: {exc}"),
+                "summary": f"Cannot run sensitivity: {exc}",
+            }
+
+        if is_numeric:
+            col_min = float(df[feature].min())
+            col_max = float(df[feature].max())
+            if col_max <= col_min:
+                return {
+                    "figure": self._empty_fig(
+                        f"{feature} is constant in training data."
+                    ),
+                    "summary": (
+                        f"Cannot sweep {feature}: it is constant "
+                        f"({col_min}) in the training data so the model "
+                        f"learned no effect."
+                    ),
+                }
+            n = int(max(3, min(25, n_points)))
+            grid = np.linspace(col_min, col_max, n).tolist()
+            x_labels = [round(v, 4) for v in grid]
+        else:
+            cats = self.ml.get_category_options().get(feature, [])
+            if len(cats) < 2:
+                return {
+                    "figure": self._empty_fig(
+                        f"{feature} has fewer than 2 trained categories."
+                    ),
+                    "summary": (
+                        f"Cannot sweep {feature}: only {len(cats)} trained "
+                        f"category — need at least 2 to compare."
+                    ),
+                }
+            grid = list(cats)
+            x_labels = list(cats)
+
+        predictions = []
+        sigmas = []
+        for g in grid:
+            kw = dict(baseline)
+            kw[feature] = g
+            try:
+                res = self.ml.predict(**kw)
+            except Exception as exc:
+                return {
+                    "figure": self._empty_fig(f"Predict failed: {exc}"),
+                    "summary": f"Sensitivity sweep failed: {exc}",
+                }
+            predictions.append(float(res["prediction"]))
+            sigmas.append(float(res["uncertainty"]))
+
+        fig = self._sensitivity_figure(
+            feature, x_labels, predictions, sigmas, is_numeric
+        )
+        summary = self._sensitivity_summary(
+            feature, baseline, grid, predictions, sigmas, is_numeric
+        )
+        return {"figure": fig, "summary": summary}
+
     def get_model_diagnostics(self) -> str:
         """Report detailed diagnostics for the currently trained removal-rate model — out-of-fold residual stats, held-out 5-fold CV metrics, data-quality warnings, and best-config hyperparameters.
 
@@ -771,8 +928,13 @@ class AgentTools:
         summary_lines = [f"Scatter: {y_feature} vs {x_feature}, n={n} points"]
         if n >= 3:
             r_val = float(np.corrcoef(common[x_feature], common[y_feature])[0, 1])
-            trend = "positive" if r_val > 0 else "negative"
-            summary_lines.append(f"  Pearson r={r_val:.3f} ({trend} trend)")
+            if r_val > 0:
+                direction = f"positive: {x_feature} up \u2192 {y_feature} up"
+            elif r_val < 0:
+                direction = f"negative: {x_feature} up \u2192 {y_feature} down"
+            else:
+                direction = "zero: no linear trend"
+            summary_lines.append(f"  Pearson r={r_val:.3f} ({direction})")
         summary_lines.append(
             f"  x range: {common[x_feature].min():.4g} to {common[x_feature].max():.4g}"
         )
@@ -1049,7 +1211,13 @@ class AgentTools:
             )
             summary_lines.append("Correlations with Removal:")
             for feat, val in removal_corr.items():
-                summary_lines.append(f"  {feat}: r={val:.2f}")
+                if val > 0:
+                    arrow = f"Removal up \u2192 {feat} up"
+                elif val < 0:
+                    arrow = f"Removal up \u2192 {feat} down"
+                else:
+                    arrow = "no linear trend"
+                summary_lines.append(f"  {feat}: r={val:.2f} ({arrow})")
 
         pairs = [
             (a, b, corr.loc[a, b]) for a, b in itertools.combinations(corr.columns, 2)
@@ -1057,7 +1225,13 @@ class AgentTools:
         pairs.sort(key=lambda x: abs(x[2]), reverse=True)
         summary_lines.append("Strongest overall correlations:")
         for a, b, r in pairs[:5]:
-            summary_lines.append(f"  {a} vs {b}: r={r:.2f}")
+            if r > 0:
+                arrow = f"{a} up \u2192 {b} up"
+            elif r < 0:
+                arrow = f"{a} up \u2192 {b} down"
+            else:
+                arrow = "no linear trend"
+            summary_lines.append(f"  {a} vs {b}: r={r:.2f} ({arrow})")
 
         fig.update_layout(**DARK_LAYOUT)
         fig.update_layout(
@@ -1416,6 +1590,143 @@ class AgentTools:
     # Helpers
     # ------------------------------------------------------------------
 
+    def _sensitivity_figure(
+        self,
+        feature: str,
+        x_labels: list,
+        predictions: list,
+        sigmas: list,
+        is_numeric: bool,
+    ) -> dict:
+        """Plot a sensitivity sweep — line+ribbon for numerics, bars+error for categoricals."""
+        fig = go.Figure()
+        upper = [p + s for p, s in zip(predictions, sigmas)]
+        lower = [p - s for p, s in zip(predictions, sigmas)]
+
+        if is_numeric:
+            fig.add_trace(
+                go.Scatter(
+                    x=x_labels + x_labels[::-1],
+                    y=upper + lower[::-1],
+                    fill="toself",
+                    fillcolor="rgba(99, 179, 237, 0.20)",
+                    line=dict(width=0),
+                    hoverinfo="skip",
+                    showlegend=False,
+                )
+            )
+            fig.add_trace(
+                go.Scatter(
+                    x=x_labels,
+                    y=predictions,
+                    mode="lines+markers",
+                    line=dict(color=COLORS["accent"], width=2),
+                    marker=dict(size=8, color=COLORS["accent"]),
+                    hovertemplate=(
+                        f"{feature}: %{{x}}<br>"
+                        "Predicted Removal: %{y:.0f}\u00c5<extra></extra>"
+                    ),
+                    showlegend=False,
+                )
+            )
+            x_title = feature + (
+                " (PSI)"
+                if feature == "Pressure PSI"
+                else " (min)"
+                if feature == "Polish Time"
+                else ""
+            )
+        else:
+            fig.add_trace(
+                go.Bar(
+                    x=x_labels,
+                    y=predictions,
+                    error_y=dict(type="data", array=sigmas, visible=True),
+                    marker_color=COLORS["accent"],
+                    hovertemplate=(
+                        f"{feature}: %{{x}}<br>"
+                        "Predicted Removal: %{y:.0f}\u00c5<extra></extra>"
+                    ),
+                )
+            )
+            x_title = feature
+
+        fig.update_layout(**DARK_LAYOUT)
+        fig.update_layout(
+            title=f"Sensitivity: Predicted Removal vs {feature}",
+            xaxis_title=x_title,
+            yaxis_title="Predicted Removal (\u00c5)",
+            showlegend=False,
+        )
+        return fig.to_plotly_json()
+
+    def _sensitivity_summary(
+        self,
+        feature: str,
+        baseline: dict,
+        grid: list,
+        predictions: list,
+        sigmas: list,
+        is_numeric: bool,
+    ) -> str:
+        """Build the deterministic summary string for analyze_sensitivity."""
+        lines = [f"Sensitivity sweep of {feature} (n={len(grid)} points)."]
+        held = []
+        for k, v in baseline.items():
+            if k == feature:
+                continue
+            held.append(f"{k}={v:.3f}" if isinstance(v, float) else f"{k}={v}")
+        lines.append("Baseline (held fixed): " + ", ".join(held))
+        lines.append("Per-point predictions (Predicted Removal \u00c5 \u00b1 1\u03c3):")
+        for g, p, s in zip(grid, predictions, sigmas):
+            gv = f"{g:.3f}" if isinstance(g, float) else str(g)
+            lines.append(f"  {feature}={gv} -> {p:.0f}\u00c5 \u00b1 {s:.0f}")
+
+        p_min, p_max = min(predictions), max(predictions)
+        lines.append(
+            f"Predicted Removal range: {p_min:.0f}\u00c5 .. {p_max:.0f}\u00c5 "
+            f"(span {p_max - p_min:.0f}\u00c5)."
+        )
+
+        if is_numeric and len(grid) >= 2:
+            delta_x = grid[-1] - grid[0]
+            delta_y = predictions[-1] - predictions[0]
+            slope = delta_y / delta_x if delta_x != 0 else 0.0
+            unit_label = (
+                "\u00c5/PSI"
+                if feature == "Pressure PSI"
+                else "\u00c5/min"
+                if feature == "Polish Time"
+                else f"\u00c5/{feature}-unit"
+            )
+            lines.append(
+                f"Endpoint slope: {slope:+.0f} {unit_label} "
+                f"(from {feature}={grid[0]:.3f} to {grid[-1]:.3f})."
+            )
+            diffs = [
+                predictions[i + 1] - predictions[i] for i in range(len(predictions) - 1)
+            ]
+            if all(d >= 0 for d in diffs):
+                mono = "monotonically increasing"
+            elif all(d <= 0 for d in diffs):
+                mono = "monotonically decreasing"
+            else:
+                mono = "non-monotonic"
+            lines.append(f"Monotonicity: {mono}.")
+        else:
+            i_max = predictions.index(p_max)
+            i_min = predictions.index(p_min)
+            lines.append(
+                f"Highest: {feature}={grid[i_max]} -> {p_max:.0f}\u00c5. "
+                f"Lowest: {feature}={grid[i_min]} -> {p_min:.0f}\u00c5."
+            )
+
+        lines.append(
+            "Cite per-point \u00c5 values verbatim. Do NOT interpolate "
+            "between grid points or invent values not in this list."
+        )
+        return "\n".join(lines)
+
     def _empty_fig(self, message: str) -> dict:
         """Create an empty Plotly figure with a centered message."""
         fig = go.Figure()
@@ -1441,6 +1752,7 @@ class AgentTools:
             self.detect_outliers,
             self.run_automl,
             self.open_prediction_form,
+            self.analyze_sensitivity,
             self.get_model_diagnostics,
             self.generate_scatter,
             self.generate_distribution,
