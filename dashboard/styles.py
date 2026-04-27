@@ -997,6 +997,7 @@ INDEX_STRING = '''
             .agent-help-preview-example {
                 margin-top: 6px;
                 color: #a0a0a0;
+                white-space: pre-line;
             }
             .agent-help-preview-label {
                 color: #707070;

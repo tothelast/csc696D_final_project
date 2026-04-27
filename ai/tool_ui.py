@@ -42,6 +42,15 @@ TOOL_UI = {
                 "conditioner — so you can inspect one run in detail.",
         "examples": ["What are the details for run_023.dat?"],
     },
+    "find_files_by_config": {
+        "category": "explore",
+        "title": "Find files by configuration",
+        "long": "Returns the files that match a configuration filter — "
+                "wafer, pad, slurry, conditioner, pressure, or polish time. "
+                "Use when you want to identify a run by its setup instead "
+                "of by file name.",
+        "examples": ["Find files with tantalum wafer at 2 psi."],
+    },
     "get_feature_statistics": {
         "category": "explore",
         "title": "Statistics for a measurement",
@@ -136,6 +145,10 @@ TOOL_UI = {
         "long": "Plots selected measurements over the course of a single "
                 "polishing run so you can see how temperature, force, or "
                 "COF changed during the process.",
-        "examples": ["Plot temperature over time for run_023.dat."],
+        "examples": [
+            "Plot temperature over time for the run on pad <pad> at "
+            "<pressure> psi.\n"
+            "Configurations you can specify: wafer · pad · slurry · conditioner · pressure · polish time"
+        ],
     },
 }
