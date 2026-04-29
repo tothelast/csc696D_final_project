@@ -83,18 +83,7 @@ def create_detailed_excel(report, file_path, progress_callback=None, save_callba
                 worksheet.write(0, total_per_frame_start_col + col_idx, col_name, header_format)
 
             # Write metadata section
-            metadata_items = [
-                ("Wafer Diameter (m)", raw_file.wafer_diameter),
-                ("", ""),
-                ("Area = \u03c0 \u00d7 (Wafer Diameter / 2)\u00b2", ""),
-                ("Area (m\u00b2)", raw_file.calculate_area()),
-
-                ("Pad to Wafer Ratio", raw_file.pad_to_wafer),
-                ("", ""),
-
-                ("Baseline Fy (lbf)=", raw_file.calculate_baseline_fy()),
-                ("Baseline Fz (lbf)=", raw_file.calculate_baseline_fz()),
-            ]
+            metadata_items = list(raw_file.get_metadata().items())
 
             for row_idx, (key, value) in enumerate(metadata_items):
                 if key:
@@ -129,5 +118,4 @@ def create_summary_excel(report, file_path):
         # Set column widths based on header lengths
         for col_idx, col_name in enumerate(report_df.columns):
             worksheet.set_column(col_idx, col_idx, max(len(str(col_name)) + 2, 10))
-
 

@@ -64,6 +64,32 @@ class BulkEditPanel(QWidget):
         interval_layout.addWidget(self.interval_end)
         form.addRow("Analysis Interval:", interval_layout)
 
+        self.wafer_diameter_input = QDoubleSpinBox()
+        self.wafer_diameter_input.setRange(0.001, 2.0)
+        self.wafer_diameter_input.setDecimals(4)
+        self.wafer_diameter_input.setSingleStep(0.05)
+        self.wafer_diameter_input.setSuffix(" m")
+        self.wafer_diameter_input.setMinimumWidth(150)
+        self.wafer_diameter_input.setButtonSymbols(QDoubleSpinBox.ButtonSymbols.UpDownArrows)
+        form.addRow("Wafer Diameter:", self.wafer_diameter_input)
+
+        self.pad_to_wafer_input = QDoubleSpinBox()
+        self.pad_to_wafer_input.setRange(0, 2)
+        self.pad_to_wafer_input.setDecimals(4)
+        self.pad_to_wafer_input.setSingleStep(0.025)
+        self.pad_to_wafer_input.setSuffix(" m")
+        self.pad_to_wafer_input.setMinimumWidth(150)
+        self.pad_to_wafer_input.setButtonSymbols(QDoubleSpinBox.ButtonSymbols.UpDownArrows)
+        form.addRow("Pad-to-Wafer:", self.pad_to_wafer_input)
+
+        self.pound_force_input = QDoubleSpinBox()
+        self.pound_force_input.setRange(0.0001, 100)
+        self.pound_force_input.setDecimals(5)
+        self.pound_force_input.setValue(4.44822)
+        self.pound_force_input.setMinimumWidth(150)
+        self.pound_force_input.setButtonSymbols(QDoubleSpinBox.ButtonSymbols.UpDownArrows)
+        form.addRow("lbf to N:", self.pound_force_input)
+
         self.wafer_type_combo = create_autocomplete_combo()
         form.addRow("Wafer:", self.wafer_type_combo)
 
@@ -106,6 +132,9 @@ class BulkEditPanel(QWidget):
         # Dirty-tracking signals: mark fields as user-modified
         self.interval_start.valueChanged.connect(lambda: self._dirty.add('interval'))
         self.interval_end.valueChanged.connect(lambda: self._dirty.add('interval'))
+        self.wafer_diameter_input.valueChanged.connect(lambda: self._dirty.add('wafer_diameter'))
+        self.pad_to_wafer_input.valueChanged.connect(lambda: self._dirty.add('pad_to_wafer'))
+        self.pound_force_input.valueChanged.connect(lambda: self._dirty.add('pound_force'))
         self.wafer_type_combo.currentTextChanged.connect(lambda: self._dirty.add('wafer_type'))
         self.pad_type_combo.currentTextChanged.connect(lambda: self._dirty.add('pad_type'))
         self.slurry_type_combo.currentTextChanged.connect(lambda: self._dirty.add('slurry_type'))
@@ -130,7 +159,9 @@ class BulkEditPanel(QWidget):
 
         with block_signals(
             self.interval_start, self.interval_end,
-            self.pressure_psi_input, self.polish_time_input
+            self.pressure_psi_input, self.polish_time_input,
+            self.wafer_diameter_input, self.pad_to_wafer_input,
+            self.pound_force_input
         ):
             # Show common values or reset to placeholder if they differ
             intervals = [f.interval for f in raw_files]
@@ -138,6 +169,13 @@ class BulkEditPanel(QWidget):
             ends = set(i[1] for i in intervals)
             self.interval_start.setValue(starts.pop() if len(starts) == 1 else 7)
             self.interval_end.setValue(ends.pop() if len(ends) == 1 else 57)
+
+            wafer_diameter_vals = set(f.wafer_diameter for f in raw_files)
+            self.wafer_diameter_input.setValue(wafer_diameter_vals.pop() if len(wafer_diameter_vals) == 1 else 0.3)
+            pad_to_wafer_vals = set(f.pad_to_wafer for f in raw_files)
+            self.pad_to_wafer_input.setValue(pad_to_wafer_vals.pop() if len(pad_to_wafer_vals) == 1 else 0.225)
+            pound_force_vals = set(f.pound_force for f in raw_files)
+            self.pound_force_input.setValue(pound_force_vals.pop() if len(pound_force_vals) == 1 else 4.44822)
 
             self._load_common_combo(self.slurry_type_combo, [f.slurry_type for f in raw_files])
             self._load_common_combo(self.wafer_type_combo, [f.wafer_type for f in raw_files])
@@ -177,6 +215,12 @@ class BulkEditPanel(QWidget):
                 end = self.interval_end.value()
                 if start < end:
                     f.interval = [start, end]
+            if 'wafer_diameter' in self._dirty:
+                f.wafer_diameter = self.wafer_diameter_input.value()
+            if 'pad_to_wafer' in self._dirty:
+                f.pad_to_wafer = self.pad_to_wafer_input.value()
+            if 'pound_force' in self._dirty:
+                f.pound_force = self.pound_force_input.value()
             if 'wafer_type' in self._dirty:
                 f.wafer_type = combo_value(self.wafer_type_combo)
             if 'pad_type' in self._dirty:

@@ -3,21 +3,47 @@ import numpy as np
 import os
 from datetime import datetime
 
+DATA_FORMAT_APD800 = 'apd800'
+DATA_FORMAT_RDP500 = 'rdp500'
+
+DATA_FORMAT_LABELS = {
+    DATA_FORMAT_APD800: 'APD800',
+    DATA_FORMAT_RDP500: 'RDP 500',
+}
+
+
 class RawFile:
 
     # polish_time (m)
     # remove rate in angstroms / polish_time (a/m)
 
-    def __init__(self, path, wafer_num=1, removal=0, nu=0, wafer_diameter=0.3, pound_force=4.44822, pad_to_wafer=0.225, interval=None, graph_settings=None):
-        if interval is None:
-            interval = [7, 57]
-
+    def __init__(
+        self,
+        path,
+        wafer_num=1,
+        removal=0,
+        nu=0,
+        wafer_diameter=None,
+        pound_force=4.44822,
+        pad_to_wafer=None,
+        interval=None,
+        graph_settings=None,
+        baseline_sample_count=None,
+        data_format=None,
+    ):
         # Process Raw Data
         self.file_name = path
         self.file_basename = os.path.basename(path)
         self._date = datetime.fromtimestamp(os.path.getmtime(path)).strftime('%Y-%m-%d')
-        self.raw_data = pd.read_csv(path, sep='\t', header=None, skiprows=1)
-        self.process_raw_data()
+        self._wafer_diameter = wafer_diameter
+        self._pound_force = pound_force
+        self._pad_to_wafer = pad_to_wafer
+        self._baseline_sample_count = baseline_sample_count
+        self.data_format = data_format
+        self.raw_data = self.read_raw_data(path)
+        self._apply_missing_format_defaults()
+        if interval is None:
+            interval = [7, 50] if self.data_format == DATA_FORMAT_RDP500 else [7, 57]
 
         # Assign Key attributes
         self._wafer_num = wafer_num
@@ -30,18 +56,94 @@ class RawFile:
         self._wafer_type = None
         self._pad_type = None
         self._conditioner_disk_type = None
-        self.wafer_diameter = wafer_diameter
-        self.pound_force = pound_force
-        self.pad_to_wafer = pad_to_wafer
         self._interval = interval
         # Graph settings per graph type: {graph_type: {'x_min': ..., 'x_max': ..., 'y_min': ..., 'y_max': ...}}
         # graph_type: 0=COF, 1=Forces, 2=Temperature
         self.graph_settings = graph_settings if graph_settings is not None else {}
-        self.hz = self.raw_data['Sampling Rate'][0]
+        self.raw_sampling_rate = self._detect_sampling_rate()
+        self.hz = self.raw_sampling_rate
 
         # Create the green table on the right and the final row for the report
         self.total_per_frame = self.populate_total_per_frame()
         self.final_row = self.calculate_final_raw()
+
+    @property
+    def data_format_label(self):
+        return DATA_FORMAT_LABELS.get(self.data_format, 'Unknown')
+
+    @property
+    def force_channel_mode(self):
+        if self.data_format == DATA_FORMAT_APD800:
+            return 'four Fz sensors'
+        if self.data_format == DATA_FORMAT_RDP500:
+            return 'single Fz sensor'
+        return 'unknown'
+
+    def _recalculate(self):
+        """Rebuild derived data after calculation settings change."""
+        if hasattr(self, 'raw_data'):
+            self.raw_sampling_rate = self._detect_sampling_rate()
+            self.hz = self.raw_sampling_rate
+        if hasattr(self, 'total_per_frame'):
+            self.total_per_frame = self.populate_total_per_frame()
+        if hasattr(self, 'final_row'):
+            self.final_row = self.calculate_final_raw()
+
+    def read_raw_data(self, path):
+        """Read a raw tool file and normalize its raw columns without using the filename."""
+        with open(path, 'r', encoding='utf-8', errors='replace') as f:
+            first_line = f.readline().strip()
+
+        if first_line.upper() == 'ARACA DATA':
+            self.data_format = DATA_FORMAT_APD800
+            raw_data = pd.read_csv(path, sep='\t', header=None, skiprows=1)
+            return self._process_apd800_raw_data(raw_data)
+
+        raw_data = pd.read_csv(path, sep='\t', header=None)
+        if raw_data.shape[1] == 9:
+            self.data_format = DATA_FORMAT_RDP500
+            return self._process_rdp500_raw_data(raw_data)
+
+        raise ValueError(
+            f"Unsupported raw data format for {os.path.basename(path)}: "
+            f"expected APD800 wide data or RDP 500 9-column data, got shape {raw_data.shape}"
+        )
+
+    def _process_apd800_raw_data(self, raw_data):
+        raw_data = raw_data.T
+        raw_data.columns = [
+            'IR Temperature', 'Fy', 'Fz1', 'Fz2',
+            'Flowrate 1', 'Flowrate 2', 'Flowrate 3',
+            'Wafer RPM', 'Pad RPM', 'Cond. RPM',
+            'N/A', 'N/A', 'Sampling Rate', 'N/A',
+            'Baseline Fy', 'Baseline Fz', 'Number of Baseline',
+            'Fz3', 'Fz4',
+            'Cond. Motor Current', 'Platen Motor Current', 'Carrier Motor Current'
+        ]
+        return raw_data
+
+    def _process_rdp500_raw_data(self, raw_data):
+        raw_data.columns = [
+            'IR Temperature', 'Fy', 'Fz', 'Wafer RPM', 'Pad RPM',
+            'Sampling Rate', 'Baseline Fy', 'Baseline Fz', 'Number of Baseline'
+        ]
+        if self._baseline_sample_count is None:
+            baseline_counts = raw_data['Number of Baseline'][raw_data['Number of Baseline'] > 0]
+            if not baseline_counts.empty:
+                self._baseline_sample_count = int(baseline_counts.iloc[0])
+        return raw_data
+
+    def _apply_missing_format_defaults(self):
+        if self._wafer_diameter is None:
+            self._wafer_diameter = 0.2 if self.data_format == DATA_FORMAT_RDP500 else 0.3
+        if self._pad_to_wafer is None:
+            self._pad_to_wafer = 0.125 if self.data_format == DATA_FORMAT_RDP500 else 0.225
+
+    def _detect_sampling_rate(self):
+        sampling_rates = self.raw_data['Sampling Rate'][self.raw_data['Sampling Rate'] > 0]
+        if sampling_rates.empty:
+            return 1.0
+        return float(sampling_rates.iloc[0])
 
     @property
     def interval(self):
@@ -162,12 +264,46 @@ class RawFile:
     def get_metadata(self):
         """Return metadata dictionary for Excel export."""
         return {
+            'Detected Tool': self.data_format_label,
+            'Force Channel Mode': self.force_channel_mode,
+            'Sampling Rate (Hz)': self.hz,
             'Wafer Diameter (m)': self.wafer_diameter,
             'Area (m²)': self.calculate_area(),
             'Pad to Wafer Ratio': self.pad_to_wafer,
             'Baseline Fy (lbf)': self.calculate_baseline_fy(),
             'Baseline Fz (lbf)': self.calculate_baseline_fz()
         }
+
+    @property
+    def wafer_diameter(self):
+        return self._wafer_diameter
+
+    @wafer_diameter.setter
+    def wafer_diameter(self, value):
+        self._wafer_diameter = value
+        self._recalculate()
+
+    @property
+    def pound_force(self):
+        return self._pound_force
+
+    @pound_force.setter
+    def pound_force(self, value):
+        self._pound_force = value
+        self._recalculate()
+
+    @property
+    def pad_to_wafer(self):
+        return self._pad_to_wafer
+
+    @pad_to_wafer.setter
+    def pad_to_wafer(self, value):
+        self._pad_to_wafer = value
+        self._recalculate()
+
+    @property
+    def baseline_sample_count(self):
+        return self._baseline_sample_count
 
     def to_dict(self, project_dir=None):
         """Serialize RawFile to dictionary for saving.
@@ -194,6 +330,8 @@ class RawFile:
             'wafer_diameter': self.wafer_diameter,
             'pound_force': self.pound_force,
             'pad_to_wafer': self.pad_to_wafer,
+            'baseline_sample_count': self.baseline_sample_count,
+            'data_format': self.data_format,
             'interval': self._interval,
             'graph_settings': self.graph_settings,
             'slurry_type': self._slurry_type,
@@ -228,7 +366,9 @@ class RawFile:
             pound_force=data['pound_force'],
             pad_to_wafer=data['pad_to_wafer'],
             interval=data['interval'],
-            graph_settings=data.get('graph_settings', {})
+            graph_settings=data.get('graph_settings', {}),
+            baseline_sample_count=data.get('baseline_sample_count'),
+            data_format=data.get('data_format')
         )
         instance.notes = data.get('notes', '')
         instance.slurry_type = data.get('slurry_type')
@@ -242,18 +382,28 @@ class RawFile:
             instance.final_row['Date'] = data['date']
         return instance
 
-    def process_raw_data(self):
-        self.raw_data = self.raw_data.T
-        self.raw_data.columns = ['IR Temperature', 'Fy', 'Fz1', 'Fz2', 'Flowrate 1', 'Flowrate 2', 'Flowrate 3', 'Wafer RPM', 'Pad RPM', 'Cond. RPM', 'N/A', 'N/A', 'Sampling Rate', 'N/A', 'Baseline Fy', 'Baseline Fz', 'Number of Baseline', 'Fz3', 'Fz4', 'Cond. Motor Current', 'Platen Motor Current', 'Carrier Motor Current']
-
     def calculate_baseline_fy(self):
-        baseline_Fy = np.average(self.raw_data['Baseline Fy'][self.raw_data['Baseline Fy'] != 0])
-        return baseline_Fy
+        if self.data_format == DATA_FORMAT_RDP500 and self._baseline_sample_count:
+            baseline_values = self.raw_data['Baseline Fy'].iloc[:self._baseline_sample_count]
+        else:
+            baseline_values = self.raw_data['Baseline Fy'][self.raw_data['Baseline Fy'] != 0]
+        return float(np.average(baseline_values)) if len(baseline_values) else 0.0
 
     def calculate_baseline_fz(self):
+        if self.data_format == DATA_FORMAT_RDP500:
+            if self._baseline_sample_count:
+                baseline_values = self.raw_data['Baseline Fz'].iloc[:self._baseline_sample_count]
+            else:
+                baseline_values = self.raw_data['Baseline Fz'][self.raw_data['Baseline Fz'] != 0]
+            return float(np.average(baseline_values)) if len(baseline_values) else 0.0
+
         baseline_Fz_list = self.raw_data['Baseline Fz'][self.raw_data['Baseline Fz'] != 0]
+        if len(baseline_Fz_list) == 0:
+            return 0.0
         size_of_one = len(baseline_Fz_list) / 4
         size_of_one = int(size_of_one)
+        if size_of_one == 0:
+            return float(np.average(baseline_Fz_list))
         baseline_Fz = np.sum([
             np.average(baseline_Fz_list[:size_of_one]),
             np.average(baseline_Fz_list[size_of_one:size_of_one*2]),
@@ -267,7 +417,9 @@ class RawFile:
         return area
 
     def calculate_fz_total_lbf(self):
-        '(Fz1 + Fz2 + Fz3 + Fz4) - baseline_Fz'
+        'APD800: (Fz1 + Fz2 + Fz3 + Fz4) - baseline_Fz. RDP500: Fz - baseline_Fz.'
+        if self.data_format == DATA_FORMAT_RDP500:
+            return self.raw_data['Fz'] - self.calculate_baseline_fz()
         return self.raw_data[['Fz1', 'Fz2', 'Fz3', 'Fz4']].sum(axis=1) - self.calculate_baseline_fz()
 
     def calculate_fy_total_lbf(self):
@@ -366,9 +518,3 @@ class RawFile:
             'Notes': [self._notes]
         })
         return final_row
-
-
-
-
-
-

@@ -1,7 +1,7 @@
 """File Details Panel - Shows file attributes and data visualization."""
 
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QFormLayout, QLabel,
+    QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QFormLayout, QLabel,
     QDoubleSpinBox, QSpinBox, QTextEdit, QTabWidget, QSplitter,
     QTableView, QComboBox, QGroupBox, QPushButton, QScrollArea,
 )
@@ -92,8 +92,9 @@ class FileDetailsPanel(QWidget):
         scroll_area.setWidget(inner_widget)
         layout.addWidget(scroll_area)
 
-        form_layout = QFormLayout()
-        form_layout.setSpacing(12)
+        run_form = QFormLayout()
+        run_form.setSpacing(10)
+        run_form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
 
         # Wafer #
         self.wafer_num_input = QSpinBox()
@@ -101,7 +102,7 @@ class FileDetailsPanel(QWidget):
         self.wafer_num_input.setMinimumWidth(150)
         self.wafer_num_input.setReadOnly(False)
         self.wafer_num_input.setButtonSymbols(QSpinBox.ButtonSymbols.UpDownArrows)
-        form_layout.addRow("Wafer #:", self.wafer_num_input)
+        run_form.addRow("Wafer #:", self.wafer_num_input)
 
         # Removal
         self.removal_input = QDoubleSpinBox()
@@ -110,7 +111,7 @@ class FileDetailsPanel(QWidget):
         self.removal_input.setMinimumWidth(150)
         self.removal_input.setReadOnly(False)
         self.removal_input.setButtonSymbols(QDoubleSpinBox.ButtonSymbols.UpDownArrows)
-        form_layout.addRow("Removal (Å):", self.removal_input)
+        run_form.addRow("Removal (Å):", self.removal_input)
 
         # WIWNU
         self.nu_input = QDoubleSpinBox()
@@ -119,7 +120,22 @@ class FileDetailsPanel(QWidget):
         self.nu_input.setMinimumWidth(150)
         self.nu_input.setReadOnly(False)
         self.nu_input.setButtonSymbols(QDoubleSpinBox.ButtonSymbols.UpDownArrows)
-        form_layout.addRow("WIWNU (%):", self.nu_input)
+        run_form.addRow("WIWNU (%):", self.nu_input)
+
+        # Set Points
+        self.pressure_psi_input = QDoubleSpinBox()
+        self.pressure_psi_input.setRange(0, 100)
+        self.pressure_psi_input.setDecimals(1)
+        self.pressure_psi_input.setMinimumWidth(150)
+        self.pressure_psi_input.setButtonSymbols(QDoubleSpinBox.ButtonSymbols.UpDownArrows)
+        run_form.addRow("Pressure (PSI):", self.pressure_psi_input)
+
+        self.polish_time_input = QDoubleSpinBox()
+        self.polish_time_input.setRange(0, 1000)
+        self.polish_time_input.setDecimals(1)
+        self.polish_time_input.setMinimumWidth(150)
+        self.polish_time_input.setButtonSymbols(QDoubleSpinBox.ButtonSymbols.UpDownArrows)
+        run_form.addRow("Polish Time (min):", self.polish_time_input)
 
         # Notes
         self.notes_input = QTextEdit()
@@ -127,11 +143,11 @@ class FileDetailsPanel(QWidget):
         self.notes_input.setMaximumHeight(100)
         self.notes_input.setReadOnly(False)
         self.notes_input.setPlaceholderText("Enter notes here...")
-        form_layout.addRow("Notes:", self.notes_input)
+        run_form.addRow("Notes:", self.notes_input)
 
-        # Right column: analysis interval + material type dropdowns
-        right_form = QFormLayout()
-        right_form.setSpacing(12)
+        calc_form = QFormLayout()
+        calc_form.setSpacing(10)
+        calc_form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
 
         # Analysis Interval (first row — most impactful setting)
         interval_layout = QHBoxLayout()
@@ -153,49 +169,96 @@ class FileDetailsPanel(QWidget):
         self.interval_end.setMinimumWidth(70)
         self.interval_end.setButtonSymbols(QDoubleSpinBox.ButtonSymbols.UpDownArrows)
         interval_layout.addWidget(self.interval_end)
-        right_form.addRow("Analysis Interval:", interval_layout)
+        calc_form.addRow("Analysis Interval:", interval_layout)
+
+        self.wafer_diameter_input = QDoubleSpinBox()
+        self.wafer_diameter_input.setRange(0.001, 2.0)
+        self.wafer_diameter_input.setDecimals(4)
+        self.wafer_diameter_input.setSingleStep(0.05)
+        self.wafer_diameter_input.setSuffix(" m")
+        self.wafer_diameter_input.setMinimumWidth(150)
+        self.wafer_diameter_input.setButtonSymbols(QDoubleSpinBox.ButtonSymbols.UpDownArrows)
+        calc_form.addRow("Wafer Diameter:", self.wafer_diameter_input)
+
+        self.effective_area_label = QLabel("0.000000 m²")
+        calc_form.addRow("Effective Area:", self.effective_area_label)
+
+        self.pad_to_wafer_input = QDoubleSpinBox()
+        self.pad_to_wafer_input.setRange(0, 2)
+        self.pad_to_wafer_input.setDecimals(4)
+        self.pad_to_wafer_input.setSingleStep(0.025)
+        self.pad_to_wafer_input.setSuffix(" m")
+        self.pad_to_wafer_input.setMinimumWidth(150)
+        self.pad_to_wafer_input.setButtonSymbols(QDoubleSpinBox.ButtonSymbols.UpDownArrows)
+        calc_form.addRow("Pad-to-Wafer:", self.pad_to_wafer_input)
+
+        self.pound_force_input = QDoubleSpinBox()
+        self.pound_force_input.setRange(0.0001, 100)
+        self.pound_force_input.setDecimals(5)
+        self.pound_force_input.setValue(4.44822)
+        self.pound_force_input.setMinimumWidth(150)
+        self.pound_force_input.setButtonSymbols(QDoubleSpinBox.ButtonSymbols.UpDownArrows)
+        calc_form.addRow("lbf to N:", self.pound_force_input)
+
+        audit_form = QFormLayout()
+        audit_form.setSpacing(8)
+        audit_form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
+
+        self.detected_format_label = QLabel("Unknown")
+        audit_form.addRow("Detected Tool:", self.detected_format_label)
+
+        self.sampling_rate_label = QLabel("0 Hz")
+        audit_form.addRow("Sampling Used:", self.sampling_rate_label)
+
+        self.force_channel_mode_label = QLabel("unknown")
+        audit_form.addRow("Force Mode:", self.force_channel_mode_label)
+
+        self.baseline_fy_label = QLabel("0.000000")
+        audit_form.addRow("Baseline Fy:", self.baseline_fy_label)
+
+        self.baseline_fz_label = QLabel("0.000000")
+        audit_form.addRow("Baseline Fz:", self.baseline_fz_label)
+
+        for label in (
+            self.detected_format_label, self.sampling_rate_label,
+            self.force_channel_mode_label, self.baseline_fy_label,
+            self.baseline_fz_label, self.effective_area_label
+        ):
+            label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
 
         self.wafer_type_combo = create_autocomplete_combo()
-        right_form.addRow("Wafer:", self.wafer_type_combo)
+        materials_form = QFormLayout()
+        materials_form.setSpacing(10)
+        materials_form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
+        materials_form.addRow("Wafer:", self.wafer_type_combo)
 
         self.pad_type_combo = create_autocomplete_combo()
-        right_form.addRow("Pad:", self.pad_type_combo)
+        materials_form.addRow("Pad:", self.pad_type_combo)
 
         self.slurry_type_combo = create_autocomplete_combo()
-        right_form.addRow("Slurry:", self.slurry_type_combo)
+        materials_form.addRow("Slurry:", self.slurry_type_combo)
 
         self.conditioner_disk_type_combo = create_autocomplete_combo()
-        right_form.addRow("Conditioner:", self.conditioner_disk_type_combo)
+        materials_form.addRow("Conditioner:", self.conditioner_disk_type_combo)
 
-        # Set Points
-        self.pressure_psi_input = QDoubleSpinBox()
-        self.pressure_psi_input.setRange(0, 100)
-        self.pressure_psi_input.setDecimals(1)
-        self.pressure_psi_input.setMinimumWidth(150)
-        self.pressure_psi_input.setButtonSymbols(QDoubleSpinBox.ButtonSymbols.UpDownArrows)
-        right_form.addRow("Pressure (PSI):", self.pressure_psi_input)
+        self.run_section = self._create_attribute_section("Run Details", run_form)
+        self.materials_section = self._create_attribute_section("Materials", materials_form)
+        self.calculation_section = self._create_attribute_section("Calculation Settings", calc_form)
+        self.audit_section = self._create_attribute_section("Data Audit", audit_form)
+        self._attribute_sections = [
+            self.run_section,
+            self.materials_section,
+            self.calculation_section,
+            self.audit_section,
+        ]
 
-        self.polish_time_input = QDoubleSpinBox()
-        self.polish_time_input.setRange(0, 1000)
-        self.polish_time_input.setDecimals(1)
-        self.polish_time_input.setMinimumWidth(150)
-        self.polish_time_input.setButtonSymbols(QDoubleSpinBox.ButtonSymbols.UpDownArrows)
-        right_form.addRow("Polish Time (min):", self.polish_time_input)
-
-        # Two-column layout with equal stretch so both columns resize proportionally.
-        # Each form is placed inside a QWidget so its size policy prevents it from
-        # stretching vertically beyond its natural height.
-        left_widget = QWidget()
-        left_widget.setLayout(right_form)
-
-        right_widget = QWidget()
-        right_widget.setLayout(form_layout)
-
-        columns_layout = QHBoxLayout()
-        columns_layout.addWidget(left_widget, 1, Qt.AlignmentFlag.AlignTop)
-        columns_layout.addSpacing(24)
-        columns_layout.addWidget(right_widget, 1, Qt.AlignmentFlag.AlignTop)
-        inner_layout.addLayout(columns_layout)
+        self.sections_grid = QGridLayout()
+        self.sections_grid.setContentsMargins(0, 0, 0, 0)
+        self.sections_grid.setHorizontalSpacing(16)
+        self.sections_grid.setVerticalSpacing(12)
+        inner_layout.addLayout(self.sections_grid)
+        inner_layout.addStretch()
+        self._layout_attribute_sections()
 
         # Apply button — fixed below the scroll area (not inside it)
         apply_layout = QHBoxLayout()
@@ -208,6 +271,59 @@ class FileDetailsPanel(QWidget):
         layout.addLayout(apply_layout)
 
         return widget
+
+    def _create_attribute_section(self, title, form_layout):
+        """Wrap a form in a compact titled section."""
+        section = QGroupBox(title)
+        section_layout = QVBoxLayout(section)
+        section_layout.setContentsMargins(12, 16, 12, 12)
+        section_layout.setSpacing(0)
+        section_layout.addLayout(form_layout)
+        return section
+
+    def _layout_attribute_sections(self):
+        """Arrange attribute sections responsively inside the scroll area."""
+        if not hasattr(self, 'sections_grid'):
+            return
+
+        width = self.width()
+        if width < 900:
+            columns = 1
+        elif width < 1300:
+            columns = 2
+        else:
+            columns = 3
+
+        for section in self._attribute_sections:
+            self.sections_grid.removeWidget(section)
+
+        if columns == 1:
+            placements = [
+                (self.run_section, 0, 0, 1, 1),
+                (self.materials_section, 1, 0, 1, 1),
+                (self.calculation_section, 2, 0, 1, 1),
+                (self.audit_section, 3, 0, 1, 1),
+            ]
+        elif columns == 2:
+            placements = [
+                (self.run_section, 0, 0, 1, 1),
+                (self.materials_section, 0, 1, 1, 1),
+                (self.calculation_section, 1, 0, 1, 1),
+                (self.audit_section, 1, 1, 1, 1),
+            ]
+        else:
+            placements = [
+                (self.run_section, 0, 0, 1, 1),
+                (self.materials_section, 0, 1, 1, 1),
+                (self.calculation_section, 0, 2, 1, 1),
+                (self.audit_section, 1, 0, 1, 3),
+            ]
+
+        for section, row, col, row_span, col_span in placements:
+            self.sections_grid.addWidget(section, row, col, row_span, col_span)
+
+        for col in range(3):
+            self.sections_grid.setColumnStretch(col, 1 if col < columns else 0)
 
     def create_data_section(self):
         """Create the data visualization section."""
@@ -311,10 +427,15 @@ class FileDetailsPanel(QWidget):
             self.interval_start, self.interval_end,
             self.wafer_num_input, self.removal_input,
             self.nu_input, self.notes_input,
-            self.pressure_psi_input, self.polish_time_input
+            self.pressure_psi_input, self.polish_time_input,
+            self.wafer_diameter_input, self.pad_to_wafer_input,
+            self.pound_force_input
         ):
             self.interval_start.setValue(raw_file.interval[0])
             self.interval_end.setValue(raw_file.interval[1])
+            self.wafer_diameter_input.setValue(raw_file.wafer_diameter)
+            self.pad_to_wafer_input.setValue(raw_file.pad_to_wafer)
+            self.pound_force_input.setValue(raw_file.pound_force)
             self.wafer_num_input.setValue(raw_file.wafer_num)
             self.removal_input.setValue(raw_file.removal)
             self.nu_input.setValue(raw_file.nu)
@@ -325,6 +446,8 @@ class FileDetailsPanel(QWidget):
             set_combo_value(self.conditioner_disk_type_combo, raw_file.conditioner_disk_type)
             self.pressure_psi_input.setValue(raw_file.pressure_psi)
             self.polish_time_input.setValue(raw_file.polish_time)
+
+        self.update_calculation_labels()
 
         # Update tables
         self.update_raw_data_table()
@@ -348,6 +471,17 @@ class FileDetailsPanel(QWidget):
             return
         self.populate_table_model(self.total_per_frame_model, self.raw_file.total_per_frame)
         self.total_per_frame_table.resizeColumnsToContents()
+
+    def update_calculation_labels(self):
+        """Refresh read-only calculation audit values."""
+        if not self.raw_file:
+            return
+        self.detected_format_label.setText(self.raw_file.data_format_label)
+        self.effective_area_label.setText(f"{self.raw_file.calculate_area():.6f} m²")
+        self.sampling_rate_label.setText(f"{self.raw_file.hz:g} Hz")
+        self.force_channel_mode_label.setText(self.raw_file.force_channel_mode)
+        self.baseline_fy_label.setText(f"{self.raw_file.calculate_baseline_fy():.6f} lbf")
+        self.baseline_fz_label.setText(f"{self.raw_file.calculate_baseline_fz():.6f} lbf")
 
     def populate_table_model(self, model, df):
         """Populate a QStandardItemModel from a pandas DataFrame."""
@@ -493,10 +627,14 @@ class FileDetailsPanel(QWidget):
 
         self.raw_file.pressure_psi = self.pressure_psi_input.value()
         self.raw_file.polish_time = self.polish_time_input.value()
+        self.raw_file.wafer_diameter = self.wafer_diameter_input.value()
+        self.raw_file.pad_to_wafer = self.pad_to_wafer_input.value()
+        self.raw_file.pound_force = self.pound_force_input.value()
 
         # Rebuild category sets from all files (reflects additions and removals)
         rebuild_global_sets(self.report)
         populate_all_combos(self)
+        self.update_calculation_labels()
 
         # Recalculate graph and statistics
         self.update_graph()
@@ -540,3 +678,7 @@ class FileDetailsPanel(QWidget):
         if 0 <= index < self.graph_selector.count():
             self.graph_selector.setCurrentIndex(index)
 
+    def resizeEvent(self, event):
+        """Reflow attribute sections when the details pane width changes."""
+        super().resizeEvent(event)
+        self._layout_attribute_sections()
